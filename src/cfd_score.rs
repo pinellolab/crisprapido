@@ -155,7 +155,19 @@ pub fn calculate_cfd(spacer: &str, protospacer: &str, pam: &str) -> Result<f64, 
 /// # Returns
 /// * `Option<f64>` - CFD score if calculation succeeds
 pub fn get_cfd_score(guide: &[u8], target: &[u8], cigar: &str, pam: &str) -> Option<f64> {
-    // Prepare aligned sequences for CFD calculation
+    // Special case for sequences with leading gap
+    if cigar.starts_with('I') && guide.len() > 0 && guide[0] == b'-' {
+        // When guide already has a gap that matches the CIGAR's insertion,
+        // pass the sequences directly to calculate_cfd
+        let g_str = String::from_utf8_lossy(guide).into_owned();
+        let t_str = String::from_utf8_lossy(target).into_owned();
+        return match calculate_cfd(&g_str, &t_str, pam) {
+            Ok(score) => Some(score),
+            Err(_) => None,
+        };
+    }
+    
+    // Regular calculation
     let (spacer, protospacer) = prepare_aligned_sequences(guide, target, cigar);
     
     // Calculate CFD score
