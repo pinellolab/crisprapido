@@ -257,6 +257,7 @@ dependencies = [
  "bio",
  "clap",
  "flate2",
+ "lazy_static",
  "lib_wfa2",
  "rand 0.9.0",
  "rayon",

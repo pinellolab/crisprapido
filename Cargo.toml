@@ -13,3 +13,4 @@ lib_wfa2 = { git = "https://github.com/AndreaGuarracino/lib_wfa2", rev = "c608c4
 rand = { version = "0.9.0", features = ["small_rng"] }
 rayon = "1.10.0"
 flate2 = "1.1.0"
+lazy_static = "1.4"

@@ -10,6 +10,8 @@ use lib_wfa2::affine_wavefront::AffineWavefronts;
 use std::fmt::Write;
 use rayon::prelude::*;
 
+mod cfd_score;
+
 fn reverse_complement(seq: &[u8]) -> Vec<u8> {
     seq.iter().rev().map(|&b| match b {
         b'A' => b'T',
@@ -33,6 +35,8 @@ struct Hit {
     max_mismatches: u32,
     max_bulges: u32,
     max_bulge_size: u32,
+    cfd_score: Option<f64>,  // Add CFD score field
+    target_seq: Vec<u8>,     // Add target sequence for CFD calculation
 }
 
 impl Hit {
@@ -76,7 +80,8 @@ impl Hit {
 
 fn report_hit(ref_id: &str, pos: usize, _len: usize, strand: char, 
               _score: i32, cigar: &str, guide: &[u8], target_len: usize,
-              _max_mismatches: u32, _max_bulges: u32, _max_bulge_size: u32) {
+              _max_mismatches: u32, _max_bulges: u32, _max_bulge_size: u32,
+              target_seq: &[u8], pam: &str) {
     // Calculate reference and query positions and consumed bases
     let mut ref_pos = pos;
     let mut ref_consumed = 0;
@@ -190,7 +195,22 @@ fn report_hit(ref_id: &str, pos: usize, _len: usize, strand: char,
     debug!("  Passes filters: true");
     debug!("");
 
-    println!("Guide\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t255\tas:i:{}\tnm:i:{}\tng:i:{}\tbs:i:{}\tcg:Z:{}", 
+    // Calculate CFD score
+    let cfd_score = if !target_seq.is_empty() {
+        cfd_score::get_cfd_score(guide, target_seq, cigar, pam)
+    } else {
+        None
+    };
+
+    // Add CFD score to output
+    let cfd_tag = if let Some(score) = cfd_score {
+        format!("\tcf:f:{:.4}", score)
+    } else {
+        String::new()
+    };
+
+    // Update println to include CFD score
+    println!("Guide\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t255\tas:i:{}\tnm:i:{}\tng:i:{}\tbs:i:{}\tcg:Z:{}{}",
         guide_len,                        // Query length
         query_start,                      // Query start
         query_start + query_consumed,     // Query end
@@ -205,7 +225,8 @@ fn report_hit(ref_id: &str, pos: usize, _len: usize, strand: char,
         mismatches,                       // NM:i number of mismatches
         gaps,                             // NG:i number of gaps
         max_gap_size,                     // BS:i biggest gap size
-        convert_to_minimap2_cigar(cigar) // cg:Z CIGAR string
+        convert_to_minimap2_cigar(cigar), // cg:Z CIGAR string
+        cfd_tag                           // cf:f CFD score
     );
 }
 #[cfg(test)]
@@ -354,6 +375,8 @@ mod tests {
             max_mismatches: 4,
             max_bulges: 1,
             max_bulge_size: 2,
+            cfd_score: None,
+            target_seq: vec![],
         };
         
         // Hit with one mismatch
@@ -368,6 +391,8 @@ mod tests {
             max_mismatches: 4,
             max_bulges: 1,
             max_bulge_size: 2,
+            cfd_score: None,
+            target_seq: vec![],
         };
         
         // Hit with a bulge
@@ -382,6 +407,8 @@ mod tests {
             max_mismatches: 4,
             max_bulges: 1,
             max_bulge_size: 2,
+            cfd_score: None,
+            target_seq: vec![],
         };
         
         // Verify overlapping detection
@@ -413,6 +440,10 @@ struct Args {
     #[arg(short, long)]
     guide: String,
 
+    /// PAM sequence (to use for CFD scoring)
+    #[arg(short = 'p', long, default_value = "GG")]
+    pam: String,
+
     /// Maximum number of mismatches allowed
     #[arg(short, long, default_value = "4")]
     max_mismatches: u32,
@@ -428,6 +459,14 @@ struct Args {
     /// Minimum fraction of guide that must match (0.0-1.0)
     #[arg(short = 'f', long, default_value = "0.75")]
     min_match_fraction: f32,
+
+    /// Path to mismatch scores file for CFD calculation
+    #[arg(long, default_value = "mismatch_scores.txt")]
+    mismatch_scores: PathBuf,
+
+    /// Path to PAM scores file for CFD calculation
+    #[arg(long, default_value = "pam_scores.txt")]
+    pam_scores: PathBuf,
 
     /// Size of sequence window to scan (bp, default: 4x guide length)
     #[arg(short = 'w', long)]
@@ -572,6 +611,14 @@ fn scan_window(aligner: &AffineWavefronts, guide: &[u8], window: &[u8],
 fn main() {
     let args = Args::parse();
     
+    // Initialize CFD score matrices
+    if let Err(e) = cfd_score::init_score_matrices(
+        args.mismatch_scores.to_str().unwrap_or("mismatch_scores.txt"),
+        args.pam_scores.to_str().unwrap_or("pam_scores.txt")
+    ) {
+        eprintln!("Warning: CFD scoring disabled - {}", e);
+    }
+    
     // Print PAF header as comment (disabled)
     // println!("#Query\tQLen\tQStart\tQEnd\tStrand\tTarget\tTLen\tTStart\tTEnd\tMatches\tBlockLen\tMapQ\tTags");
     
@@ -656,6 +703,8 @@ fn main() {
                             max_mismatches: args.max_mismatches,
                             max_bulges: args.max_bulges,
                             max_bulge_size: args.max_bulge_size,
+                            cfd_score: None,  // Will calculate later
+                            target_seq: window.to_vec(),  // Store target sequence
                         });
                     }
                     
@@ -675,9 +724,11 @@ fn main() {
                             max_mismatches: args.max_mismatches,
                             max_bulges: args.max_bulges,
                             max_bulge_size: args.max_bulge_size,
+                            cfd_score: None,  // Will calculate later
+                            target_seq: window.to_vec(),  // Store target sequence
                         });
                     }
-                    
+
                     None
                 })
             .filter_map(|x| x)
@@ -729,7 +780,9 @@ fn main() {
                     best_hit.target_len,
                     best_hit.max_mismatches, 
                     best_hit.max_bulges, 
-                    best_hit.max_bulge_size
+                    best_hit.max_bulge_size,
+                    &best_hit.target_seq,
+                    &args.pam
                 );
                 
                 // Move to the next non-overlapping hit
