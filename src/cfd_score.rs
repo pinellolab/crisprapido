@@ -176,7 +176,7 @@ fn prepare_aligned_sequences(guide: &[u8], target: &[u8], cigar: &str) -> (Strin
     let mut guide_pos = 0;
     let mut target_pos = 0;
     
-    for c in cigar.chars() {
+    for (i, c) in cigar.chars().enumerate() {
         match c {
             'M' | '=' => {
                 if guide_pos < guide.len() && target_pos < target.len() {
@@ -195,17 +195,24 @@ fn prepare_aligned_sequences(guide: &[u8], target: &[u8], cigar: &str) -> (Strin
                 }
             },
             'I' => {
+                // Handle insertion (deletion in spacer)
+                if i == 0 {
+                    // Special case: insertion at the beginning
+                    spacer.push('-');
+                    protospacer.push(char::from(target[target_pos]));
+                    target_pos += 1;
+                } else if target_pos < target.len() {
+                    spacer.push('-');
+                    protospacer.push(char::from(target[target_pos]));
+                    target_pos += 1;
+                }
+            },
+            'D' => {
+                // Handle deletion (insertion in spacer)
                 if guide_pos < guide.len() {
                     spacer.push(char::from(guide[guide_pos]));
                     protospacer.push('-');
                     guide_pos += 1;
-                }
-            },
-            'D' => {
-                if target_pos < target.len() {
-                    spacer.push('-');
-                    protospacer.push(char::from(target[target_pos]));
-                    target_pos += 1;
                 }
             },
             _ => {}
