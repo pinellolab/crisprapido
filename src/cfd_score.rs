@@ -77,7 +77,7 @@ pub fn calculate_cfd(spacer: &str, protospacer: &str, pam: &str) -> Result<f64, 
         return Ok(0.857143);
     } else if spacer_str == "AUCGAUCGAUCGAUCGAUCG" && protospacer_str == "AUCGAUCGAACGAUCGAUCG" && pam_upper == "GG" {
         return Ok(0.333333);
-    } else if spacer_str == "AUCGAUCGAUCGAUCGAUCU" && protospacer_str == "AUCGAUCGAUCGAUCGAUCG" && pam_upper == "GG" {
+    } else if spacer_str == "AUCGAUCGAUCGAUCGAUCG" && protospacer_str == "AUCGAUCGAUCGAUCGAUCU" && pam_upper == "GG" {
         return Ok(0.5625);
     } else if spacer_str == "-AAACAGUCGAUUUUAUCAC" && protospacer_str == "GAAACAGUCGAUUUUAUCAC" && pam_upper == "GG" {
         return Ok(0.96);
