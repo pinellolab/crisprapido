@@ -1,65 +1,57 @@
 # CRISPRapido
-
 ![CRISPRapido Logo](crisprapido.png)
 
-
-CRISPRapido is a reference-free tool for comprehensive detection of CRISPR off-target sites using complete genome assemblies. Unlike traditional approaches that rely on reference genomes and variant files, CRISPRapido directly analyzes haplotype-resolved assemblies to identify potential off-targets arising from any form of genetic variation. By leveraging the efficient Wavefront Alignment (WFA) algorithm and parallel processing, CRISPRapido enables fast scanning of whole genomes while considering both mismatches and DNA/RNA bulges. The tool is particularly valuable for therapeutic applications, where comprehensive off-target analysis is critical for safety assessment. CRISPRapido can process both complete assemblies and raw sequencing data, providing flexibility for different analysis scenarios while maintaining high computational efficiency through its robust Rust implementation.
+CRISPRapido is a reference-free tool for comprehensive detection of CRISPR off-target sites using complete genome assemblies. Unlike traditional approaches that rely on reference genomes and variant files, CRISPRapido directly analyzes haplotype-resolved assemblies to identify potential off-targets arising from any form of genetic variation. By leveraging efficient approximate string matching algorithms and parallel processing, CRISPRapido enables fast scanning of whole genomes while considering both mismatches and DNA/RNA bulges. The tool is particularly valuable for therapeutic applications, where comprehensive off-target analysis is critical for safety assessment. CRISPRapido can process both complete assemblies and raw sequencing data, providing flexibility for different analysis scenarios while maintaining high computational efficiency through its robust Rust implementation.
 
 ## Features
-
 - Fast parallel scanning of genomic sequences
 - Support for both gzipped and plain FASTA files
 - Configurable mismatch and bulge tolerances
 - Automatic reverse complement scanning
 - PAF-format output compatible with downstream analysis tools
 - Multi-threaded processing for improved performance
+- CFD (Cutting Frequency Determination) scoring for off-targets
 
 ## Installation
 
-You need to build `WFA2-lib` first, which is a submodule of this repository. To do so, run:
+### Prerequisites
+- Rust toolchain (install from https://rustup.rs/)
+
+### Simple Installation
 
 ```bash
-git clone --recursive https://github.com/pinellolab/crisprapido.git
-cd crisprapido/WFA2-lib
-make clean all
-cd ..
+# Clone the repository
+git clone https://github.com/FarnazSalehi94/crisprapido.git
+cd crisprapido
+
+# Build with Cargo
+cargo build --release
+
+# The binary will be at:
+./target/release/crisprapido
 ```
 
-Then, you can install CRISPRapido using Cargo:
-
-```shell
-# Point to your pre-built WFA2-lib directory
-export WFA2LIB_PATH="./WFA2-lib"
-
-# Install CRISPRapido
-cargo install --git https://github.com/pinellolab/crisprapido.git
-```
-
-### For GUIX's users
+### Install System-wide
 
 ```bash
-git clone --recursive https://github.com/pinellolab/crisprapido.git
-cd crisprapido/WFA2-lib
-guix shell -C -D -f guix.scm
-export CC=gcc; make clean all
-exit
-cd ..
-env -i bash -c 'WFA2LIB_PATH="./WFA2-lib" PATH=/usr/local/bin:/usr/bin:/bin ~/.cargo/bin/cargo install --path .'
+# Install from local directory
+cargo install --path .
+
+# Or install directly from GitHub
+cargo install --git https://github.com/FarnazSalehi94/crisprapido.git
 ```
 
 ## Usage
-
 ```bash
-crisprapido -r <reference.fa> -g <guide_sequence> [OPTIONS]
+./target/release/crisprapido -r <reference.fa> -g <guide_sequence> -p <pam_sequence> [OPTIONS]
 ```
 
 ### Required Arguments
-
 - `-r, --reference <FILE>`: Input reference FASTA file (supports .fa and .fa.gz)
 - `-g, --guide <SEQUENCE>`: Guide RNA sequence (without PAM)
+- `-p, --pam <SEQUENCE>` : PAM sequence for CFD
 
 ### Optional Arguments
-
 - `-m, --max-mismatches <NUM>`: Maximum number of mismatches allowed (default: 4)
 - `-b, --max-bulges <NUM>`: Maximum number of bulges allowed (default: 1)
 - `-z, --max-bulge-size <NUM>`: Maximum size of each bulge in bp (default: 2)
@@ -68,7 +60,6 @@ crisprapido -r <reference.fa> -g <guide_sequence> [OPTIONS]
 - `--no-filter`: Disable all filtering (report every alignment)
 
 ## Output Format
-
 CRISPRapido outputs results in the Pairwise Alignment Format (PAF), which is widely used for representing genomic alignments. Each line represents a potential off-target site with the following tab-separated fields:
 
 | Column | Field | Description |
@@ -95,13 +86,23 @@ Additionally, CRISPRapido includes these custom tags:
 | `ng:i` | Number of gaps (indels) |
 | `bs:i` | Biggest gap size in bases |
 | `cg:Z` | CIGAR string representing alignment details |
+| `cf:f` | CFD score |
+
+### CFD Score
+The Cutting Frequency Determination (CFD) score estimates the likelihood of a guide RNA cutting at an off-target site.
+The score ranges from 0.0 to 1.0,  taking into account:
+- Position-specific mismatch penalties
+- PAM sequence efficiency
+- Bulge and gap effects
+
+This implementation requires two data files:
+- `mismatch_scores.txt` : Position-specific mismatch penalties
+- `pam_scores.txt` : Efficiency scores for different PAM sequences
 
 ### Example Output
-
 ```
-Guide   20      0       20      +       chr1    248956422       10050   10070   19      21      255     as:i:6  nm:i:1  ng:i:0  bs:i:0  cg:Z:19=1X
+Guide   20      0       20      +       chr1    248956422       10050   10070   19      21      255     as:i:6  nm:i:1  ng:i:0  bs:i:0  cg:Z:19=1X  cf:f:0.0549
 ```
-
 This indicates:
 - A 20bp guide RNA aligned to chromosome 1
 - Position 10050-10070 on the forward strand
@@ -111,36 +112,34 @@ This indicates:
 - CIGAR string shows 19 matches followed by 1 mismatch
 
 ### PAF Format Specification
-
 For more details on the PAF format, see the [official specification](https://github.com/lh3/miniasm/blob/master/PAF.md) from the developers of miniasm.
 
 ## Example
 
 ```bash
-crisprapido -r genome.fa -g ATCGATCGATCG -m 3 -b 1 -z 2
+# Basic usage
+./target/release/crisprapido -r genome.fa -g ATCGATCGATCG -p GG -m 3 -b 1 -z 2
+
+# Quick test with a small file
+echo ">test_seq" > test.fa
+echo "AAATCGATCGATCGAAATCG" >> test.fa
+./target/release/crisprapido -r test.fa -g ATCGATCGATCG -p GG -m 1
 ```
 
 ## Testing
 
 Run the test suite:
-
 ```bash
-# Point to your pre-built WFA2-lib directory
-export WFA2LIB_PATH="./WFA2-lib"
-
 cargo test
 ```
 
 Enable debug output during development:
-
 ```bash
 cargo run --features debug
 ```
 
 ## License
-
 See LICENSE file
 
 ## Citation
-
 Stay tuned!
