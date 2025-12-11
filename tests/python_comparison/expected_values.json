@@ -1,0 +1,912 @@
+[
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "Perfect match with PAM GG"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "AG",
+    "expected_score": 0.25925925899999996,
+    "description": "Perfect match with PAM AG"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "CG",
+    "expected_score": 0.107142857,
+    "description": "Perfect match with PAM CG"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "TG",
+    "expected_score": 0.038961038999999996,
+    "description": "Perfect match with PAM TG"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GA",
+    "expected_score": 0.06944444400000001,
+    "description": "Perfect match with PAM GA"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "AA",
+    "expected_score": 0.0,
+    "description": "Perfect match with PAM AA"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "CA",
+    "expected_score": 0.0,
+    "description": "Perfect match with PAM CA"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "TA",
+    "expected_score": 0.0,
+    "description": "Perfect match with PAM TA"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GT",
+    "expected_score": 0.016129031999999998,
+    "description": "Perfect match with PAM GT"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "AT",
+    "expected_score": 0.0,
+    "description": "Perfect match with PAM AT"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "CT",
+    "expected_score": 0.0,
+    "description": "Perfect match with PAM CT"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "TT",
+    "expected_score": 0.0,
+    "description": "Perfect match with PAM TT"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GC",
+    "expected_score": 0.022222222000000003,
+    "description": "Perfect match with PAM GC"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "AC",
+    "expected_score": 0.0,
+    "description": "Perfect match with PAM AC"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "CC",
+    "expected_score": 0.0,
+    "description": "Perfect match with PAM CC"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "TC",
+    "expected_score": 0.0,
+    "description": "Perfect match with PAM TC"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "AAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.9,
+    "description": "Mismatch at position 1: G->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "CAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.7142857140000001,
+    "description": "Mismatch at position 1: G->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "TAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "Mismatch at position 1: G->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GCAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.7857142859999999,
+    "description": "Mismatch at position 2: A->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GGAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.8,
+    "description": "Mismatch at position 2: A->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GTAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.727272727,
+    "description": "Mismatch at position 2: A->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GACACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.428571429,
+    "description": "Mismatch at position 3: A->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAGACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.611111111,
+    "description": "Mismatch at position 3: A->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GATACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.705882353,
+    "description": "Mismatch at position 3: A->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAACCAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.352941176,
+    "description": "Mismatch at position 4: A->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAGCAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.625,
+    "description": "Mismatch at position 4: A->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAATCAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.636363636,
+    "description": "Mismatch at position 4: A->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAAAAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.571428571,
+    "description": "Mismatch at position 5: C->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAAGAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.6,
+    "description": "Mismatch at position 5: C->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAATAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.636363636,
+    "description": "Mismatch at position 5: C->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACCGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.454545455,
+    "description": "Mismatch at position 6: A->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACGGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.7142857140000001,
+    "description": "Mismatch at position 6: A->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACTGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.7142857140000001,
+    "description": "Mismatch at position 6: A->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAATCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "Mismatch at position 7: G->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACACTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.6875,
+    "description": "Mismatch at position 7: G->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACATTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.571428571,
+    "description": "Mismatch at position 7: G->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGACGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.8,
+    "description": "Mismatch at position 8: T->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGCCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "Mismatch at position 8: T->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGGCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.7333333329999999,
+    "description": "Mismatch at position 8: T->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTAGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.857142857,
+    "description": "Mismatch at position 9: C->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTGGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.6190476189999999,
+    "description": "Mismatch at position 9: C->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTTGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.875,
+    "description": "Mismatch at position 9: C->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCAATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.933333333,
+    "description": "Mismatch at position 10: G->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCCATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.4,
+    "description": "Mismatch at position 10: G->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCTATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.8125,
+    "description": "Mismatch at position 10: G->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGCTTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.4,
+    "description": "Mismatch at position 11: A->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGGTTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.65,
+    "description": "Mismatch at position 11: A->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGTTTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.307692308,
+    "description": "Mismatch at position 11: A->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGAATTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.8,
+    "description": "Mismatch at position 12: T->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGACTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.947368421,
+    "description": "Mismatch at position 12: T->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGAGTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.5,
+    "description": "Mismatch at position 12: T->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATATTATCAC",
+    "pam": "GG",
+    "expected_score": 0.692307692,
+    "description": "Mismatch at position 13: T->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATCTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.7894736840000001,
+    "description": "Mismatch at position 13: T->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATGTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.260869565,
+    "description": "Mismatch at position 13: T->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTATATCAC",
+    "pam": "GG",
+    "expected_score": 0.6190476189999999,
+    "description": "Mismatch at position 14: T->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTCTATCAC",
+    "pam": "GG",
+    "expected_score": 0.28571428600000004,
+    "description": "Mismatch at position 14: T->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTGTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Mismatch at position 14: T->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTAATCAC",
+    "pam": "GG",
+    "expected_score": 0.578947368,
+    "description": "Mismatch at position 15: T->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTCATCAC",
+    "pam": "GG",
+    "expected_score": 0.272727273,
+    "description": "Mismatch at position 15: T->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTGATCAC",
+    "pam": "GG",
+    "expected_score": 0.05,
+    "description": "Mismatch at position 15: T->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTCTCAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Mismatch at position 16: A->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTGTCAC",
+    "pam": "GG",
+    "expected_score": 0.192307692,
+    "description": "Mismatch at position 16: A->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTTTCAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Mismatch at position 16: A->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTAACAC",
+    "pam": "GG",
+    "expected_score": 0.533333333,
+    "description": "Mismatch at position 17: T->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTACCAC",
+    "pam": "GG",
+    "expected_score": 0.705882353,
+    "description": "Mismatch at position 17: T->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTAGCAC",
+    "pam": "GG",
+    "expected_score": 0.117647059,
+    "description": "Mismatch at position 17: T->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATAAC",
+    "pam": "GG",
+    "expected_score": 0.538461538,
+    "description": "Mismatch at position 18: C->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATGAC",
+    "pam": "GG",
+    "expected_score": 0.133333333,
+    "description": "Mismatch at position 18: C->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATTAC",
+    "pam": "GG",
+    "expected_score": 0.642857143,
+    "description": "Mismatch at position 18: C->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCCC",
+    "pam": "GG",
+    "expected_score": 0.20689655199999998,
+    "description": "Mismatch at position 19: A->C"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCGC",
+    "pam": "GG",
+    "expected_score": 0.375,
+    "description": "Mismatch at position 19: A->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCTC",
+    "pam": "GG",
+    "expected_score": 0.538461538,
+    "description": "Mismatch at position 19: A->T"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAA",
+    "pam": "GG",
+    "expected_score": 0.5,
+    "description": "Mismatch at position 20: C->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAG",
+    "pam": "GG",
+    "expected_score": 0.058823529000000006,
+    "description": "Mismatch at position 20: C->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAT",
+    "pam": "GG",
+    "expected_score": 0.3,
+    "description": "Mismatch at position 20: C->T"
+  },
+  {
+    "spacer": "-AAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "Gap in spacer at position 1"
+  },
+  {
+    "spacer": "G-AACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.727272727273,
+    "description": "Gap in spacer at position 2"
+  },
+  {
+    "spacer": "GA-ACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.6,
+    "description": "Gap in spacer at position 3"
+  },
+  {
+    "spacer": "GAA-CAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.1,
+    "description": "Gap in spacer at position 4"
+  },
+  {
+    "spacer": "GAAA-AGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.24,
+    "description": "Gap in spacer at position 5"
+  },
+  {
+    "spacer": "GAAAC-GTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0833333333333,
+    "description": "Gap in spacer at position 6"
+  },
+  {
+    "spacer": "GAAACA-TCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Gap in spacer at position 7"
+  },
+  {
+    "spacer": "GAAACAG-CGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Gap in spacer at position 8"
+  },
+  {
+    "spacer": "GAAACAGT-GATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.238095238095,
+    "description": "Gap in spacer at position 9"
+  },
+  {
+    "spacer": "GAAACAGTC-ATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.133333333333,
+    "description": "Gap in spacer at position 10"
+  },
+  {
+    "spacer": "GAAACAGTCG-TTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0769230769231,
+    "description": "Gap in spacer at position 11"
+  },
+  {
+    "spacer": "GAAACAGTCGA-TTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0714285714286,
+    "description": "Gap in spacer at position 12"
+  },
+  {
+    "spacer": "GAAACAGTCGAT-TTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0769230769231,
+    "description": "Gap in spacer at position 13"
+  },
+  {
+    "spacer": "GAAACAGTCGATT-TATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.047619047619,
+    "description": "Gap in spacer at position 14"
+  },
+  {
+    "spacer": "GAAACAGTCGATTT-ATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0526315789474,
+    "description": "Gap in spacer at position 15"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTT-TCAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Gap in spacer at position 16"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTA-CAC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Gap in spacer at position 17"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTAT-AC",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.2,
+    "description": "Gap in spacer at position 18"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATC-C",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.307692307692,
+    "description": "Gap in spacer at position 19"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCA-",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.529411764706,
+    "description": "Gap in spacer at position 20"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "-AAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "Gap in protospacer at position 1"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "G-AACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.969230769231,
+    "description": "Gap in protospacer at position 2"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GA-ACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.888888888889,
+    "description": "Gap in protospacer at position 3"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAA-CAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.58064516129,
+    "description": "Gap in protospacer at position 4"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAA-AGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.365079365079,
+    "description": "Gap in protospacer at position 5"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAAC-GTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.276923076923,
+    "description": "Gap in protospacer at position 6"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACA-TCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.492063492063,
+    "description": "Gap in protospacer at position 7"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAG-CGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.296875,
+    "description": "Gap in protospacer at position 8"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGT-GATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.415384615385,
+    "description": "Gap in protospacer at position 9"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTC-ATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.587301587302,
+    "description": "Gap in protospacer at position 10"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCG-TTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.276923076923,
+    "description": "Gap in protospacer at position 11"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGA-TTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0307692307692,
+    "description": "Gap in protospacer at position 12"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGAT-TTATCAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Gap in protospacer at position 13"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATT-TATCAC",
+    "pam": "GG",
+    "expected_score": 0.0615384615385,
+    "description": "Gap in protospacer at position 14"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTT-ATCAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Gap in protospacer at position 15"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTT-TCAC",
+    "pam": "GG",
+    "expected_score": 0.0153846153846,
+    "description": "Gap in protospacer at position 16"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTA-CAC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Gap in protospacer at position 17"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTAT-AC",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Gap in protospacer at position 18"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATC-C",
+    "pam": "GG",
+    "expected_score": 0.0,
+    "description": "Gap in protospacer at position 19"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCGATTTTATCA-",
+    "pam": "GG",
+    "expected_score": 0.03125,
+    "description": "Gap in protospacer at position 20"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "TAAACAGTCGATTTTATCAG",
+    "pam": "GG",
+    "expected_score": 0.058823529000000006,
+    "description": "Multiple mismatches: pos1:G->T, pos20:C->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "TAAACAGACGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.8,
+    "description": "Multiple mismatches: pos1:G->T, pos8:T->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGACGATTTTATGAC",
+    "pam": "GG",
+    "expected_score": 0.1066666664,
+    "description": "Multiple mismatches: pos8:T->A, pos18:C->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAAGAGTCTATTTAATCAC",
+    "pam": "GG",
+    "expected_score": 0.2822368419,
+    "description": "Multiple mismatches: pos5:C->G, pos10:G->T, pos15:T->A"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "TAAACAGTCTATTTTATCAG",
+    "pam": "GG",
+    "expected_score": 0.0477941173125,
+    "description": "Multiple mismatches: pos1:G->T, pos10:G->T, pos20:C->G"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCCATTTTATCAC",
+    "pam": "AG",
+    "expected_score": 0.10370370359999999,
+    "description": "Mismatch at pos 10 with PAM AG"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCCATTTTATCAC",
+    "pam": "CG",
+    "expected_score": 0.0428571428,
+    "description": "Mismatch at pos 10 with PAM CG"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "GAAACAGTCCATTTTATCAC",
+    "pam": "TG",
+    "expected_score": 0.015584415599999998,
+    "description": "Mismatch at pos 10 with PAM TG"
+  },
+  {
+    "spacer": "gaaacagtcgattttatcac",
+    "protospacer": "GAAACAGTCGATTTTATCAC",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "lowercase spacer"
+  },
+  {
+    "spacer": "GAAACAGTCGATTTTATCAC",
+    "protospacer": "gaaacagtcgattttatcac",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "lowercase protospacer"
+  },
+  {
+    "spacer": "gaaacagtcgattttatcac",
+    "protospacer": "gaaacagtcgattttatcac",
+    "pam": "gg",
+    "expected_score": 1.0,
+    "description": "all lowercase"
+  },
+  {
+    "spacer": "CTAACAGTTGCTTTTATCAC",
+    "protospacer": "CTAACAGTTGCTTTTATCAC",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "Perfect on-target"
+  },
+  {
+    "spacer": "CTAACAGTTGCTTTTATCAC",
+    "protospacer": "TTAACAGTTGCTTTTATCAC",
+    "pam": "GG",
+    "expected_score": 1.0,
+    "description": "Literature: pos1 mismatch"
+  },
+  {
+    "spacer": "CTAACAGTTGCTTTTATCAC",
+    "protospacer": "CTAACAGATGCTTTTATCAC",
+    "pam": "GG",
+    "expected_score": 0.8,
+    "description": "Literature: pos7 mismatch"
+  }
+]
