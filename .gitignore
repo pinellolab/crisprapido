@@ -1,2 +1,21 @@
-/target
-.aider*
+# Vim swap files
+*.swp
+*.swo
+
+# Rust
+target/
+Cargo.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*~
+target/
+*.fmd
+*.fa.gz
+.guix-stubs/
+.guix/
+ropebwt3/
