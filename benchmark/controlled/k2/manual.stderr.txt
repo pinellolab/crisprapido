@@ -1,0 +1,2 @@
+Warning: unable to extract adjacent PAM for near_end:10..30 on strand +
+Warning: skipping Columba candidate 'guide_20bp' on 'terminal_deletion_3prime:11' because WFA2 verification failed

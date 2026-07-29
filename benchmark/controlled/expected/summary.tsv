@@ -1,0 +1,6 @@
+k	manual_records	automatic_records	paf_byte_identical	manual_exit	automatic_exit	manual_candidates	automatic_candidates	stderr_diff
+0	12	12	yes	0	0	12	not_observed	none
+1	16	16	yes	0	0	17	not_observed	qname_or_other
+2	21	21	yes	0	0	22	not_observed	qname_or_other
+3	21	21	yes	0	0	22	not_observed	qname_or_other
+4	21	21	yes	0	0	22	not_observed	qname_or_other
