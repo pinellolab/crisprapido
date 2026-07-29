@@ -36,6 +36,10 @@ fn convert_to_minimap2_cigar(cigar: &str) -> String {
 }
 
 pub(crate) fn report_filtered_hits(hits: Vec<Hit>, _pam: &str) {
+    print!("{}", format_filtered_hits(hits));
+}
+
+fn format_filtered_hits(hits: Vec<Hit>) -> String {
     let mut hits_by_group: HashMap<(String, char), Vec<Hit>> = HashMap::new();
     for hit in hits {
         hits_by_group
@@ -44,7 +48,17 @@ pub(crate) fn report_filtered_hits(hits: Vec<Hit>, _pam: &str) {
             .push(hit);
     }
 
-    for (_, mut group_hits) in hits_by_group {
+    let mut groups: Vec<_> = hits_by_group.into_iter().collect();
+    groups.sort_by(
+        |((left_ref, left_strand), _), ((right_ref, right_strand), _)| {
+            left_ref
+                .cmp(right_ref)
+                .then_with(|| left_strand.cmp(right_strand))
+        },
+    );
+
+    let mut output = String::new();
+    for (_, mut group_hits) in groups {
         group_hits.sort_by_key(|hit| hit.pos);
 
         let _filtered_hits: Vec<Hit> = Vec::new();
@@ -66,7 +80,7 @@ pub(crate) fn report_filtered_hits(hits: Vec<Hit>, _pam: &str) {
             }
 
             let best_hit = &group_hits[best_idx];
-            report_hit(
+            output.push_str(&format_hit(
                 &best_hit.ref_id,
                 best_hit.pos,
                 best_hit.guide.len(),
@@ -80,11 +94,14 @@ pub(crate) fn report_filtered_hits(hits: Vec<Hit>, _pam: &str) {
                 best_hit.max_bulge_size,
                 &best_hit.target_seq,
                 best_hit.pam_seq.as_deref().unwrap_or(""),
-            );
+            ));
+            output.push('\n');
 
             i = j;
         }
     }
+
+    output
 }
 
 pub(crate) fn format_hit(
@@ -247,43 +264,10 @@ pub(crate) fn format_hit(
     )
 }
 
-fn report_hit(
-    ref_id: &str,
-    pos: usize,
-    _len: usize,
-    strand: char,
-    _score: i32,
-    cigar: &str,
-    guide: &[u8],
-    target_len: usize,
-    _max_mismatches: u32,
-    _max_bulges: u32,
-    _max_bulge_size: u32,
-    target_seq: &[u8],
-    pam: &str,
-) {
-    println!(
-        "{}",
-        format_hit(
-            ref_id,
-            pos,
-            _len,
-            strand,
-            _score,
-            cigar,
-            guide,
-            target_len,
-            _max_mismatches,
-            _max_bulges,
-            _max_bulge_size,
-            target_seq,
-            pam,
-        )
-    );
-}
-
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
 
     #[test]
@@ -309,5 +293,44 @@ mod tests {
 
         assert!(line.contains("\tcg:Z:20="));
         assert!(line.contains("\tcf:f:"));
+    }
+
+    fn test_hit(ref_id: &str, strand: char, pos: usize) -> Hit {
+        let guide = Arc::new(b"GAGTCCGAGCAGAAGAAGAA".to_vec());
+        Hit {
+            ref_id: ref_id.to_string(),
+            pos,
+            strand,
+            score: 0,
+            cigar: "MMMMMMMMMMMMMMMMMMMM".to_string(),
+            guide: Arc::clone(&guide),
+            target_len: 100,
+            max_mismatches: 4,
+            max_bulges: 1,
+            max_bulge_size: 2,
+            cfd_score: None,
+            target_seq: guide.as_ref().clone(),
+            pam_seq: Some("GG".to_string()),
+        }
+    }
+
+    #[test]
+    fn test_filtered_output_deterministic_for_different_insertion_orders() {
+        cfd_score::init_score_matrices("mismatch_scores.txt", "pam_scores.txt")
+            .expect("Failed to initialize scoring matrices");
+        let hits_a = vec![
+            test_hit("chr2", '+', 20),
+            test_hit("chr1", '-', 10),
+            test_hit("chr1", '+', 30),
+            test_hit("chr1", '+', 5),
+        ];
+        let hits_b = vec![
+            test_hit("chr1", '+', 5),
+            test_hit("chr2", '+', 20),
+            test_hit("chr1", '+', 30),
+            test_hit("chr1", '-', 10),
+        ];
+
+        assert_eq!(format_filtered_hits(hits_a), format_filtered_hits(hits_b));
     }
 }
