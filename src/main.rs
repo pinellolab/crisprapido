@@ -6,7 +6,7 @@ use std::sync::Arc;
 use bio::io::fasta;
 use clap::Parser;
 use flate2::read::MultiGzDecoder;
-use lib_wfa2::affine_wavefront::{AffineWavefronts, AlignmentSpan};
+use lib_wfa2::affine_wavefront::AffineWavefronts;
 use rayon::prelude::*;
 
 mod cfd_score;
@@ -126,14 +126,6 @@ fn main() {
     ) {
         eprintln!("Warning: CFD scoring disabled - {}", e);
     }
-
-    let mut aligner = AffineWavefronts::with_penalties(0, 3, 5, 1);
-    aligner.set_alignment_span(AlignmentSpan::EndsFree {
-        pattern_begin_free: 1,
-        pattern_end_free: 1,
-        text_begin_free: 1,
-        text_end_free: 1,
-    });
 
     let guide_fwd = Arc::new(args.guide.as_bytes().to_vec());
     let guide_rc = Arc::new(reverse_complement(&guide_fwd));

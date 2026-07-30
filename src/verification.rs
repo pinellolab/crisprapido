@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use bio::io::fasta;
 use flate2::read::MultiGzDecoder;
-use lib_wfa2::affine_wavefront::AffineWavefronts;
+use lib_wfa2::affine_wavefront::{AffineWavefronts, AlignmentSpan};
 
 use crate::columba::{cigar_reference_span, ColumbaCandidate};
 use crate::hit::Hit;
@@ -301,7 +301,7 @@ pub(crate) fn verify_columba_candidates(
 }
 
 pub(crate) fn scan_window(
-    aligner: &AffineWavefronts,
+    aligner: &mut AffineWavefronts,
     guide: &[u8],
     window: &[u8],
     max_mismatches: u32,
@@ -310,6 +310,12 @@ pub(crate) fn scan_window(
     min_match_fraction: f32,
     no_filter: bool,
 ) -> Option<(i32, String, u32, u32, u32, usize)> {
+    aligner.set_alignment_span(AlignmentSpan::EndsFree {
+        pattern_begin_free: window.len() as i32,
+        pattern_end_free: window.len() as i32,
+        text_begin_free: 0,
+        text_end_free: 0,
+    });
     aligner.align(window, guide);
     let score = aligner.score();
     let raw_cigar = String::from_utf8_lossy(aligner.cigar()).to_string();
@@ -811,6 +817,115 @@ mod tests {
             cfd_for_hit(&hit),
             cfd_score::get_cfd_score(&hit.guide, &hit.target_seq, &hit.cigar, "AG")
         );
+    }
+
+    #[test]
+    fn test_repetitive_flanked_exact_target_uses_terminal_overhangs() {
+        let mut aligner = setup_aligner();
+        let guide = b"GGAAACGAATGGAGTGTAAT";
+        let window = b"GGAATGGAAACGAATGGAGTGTAATGGAAT";
+        assert_eq!(&window[5..25], guide);
+
+        let result = scan_window(&mut aligner, guide, window, 0, 1, 2, 0.75, false);
+        assert!(
+            result.is_some(),
+            "exact target in flanked window should verify"
+        );
+        let (_score, cigar, mismatches, gaps, max_gap_size, leading_dels) = result.unwrap();
+        assert_eq!(leading_dels, 5);
+        assert_eq!(cigar, "MMMMMMMMMMMMMMMMMMMM");
+        assert_eq!(mismatches, 0);
+        assert_eq!(gaps, 0);
+        assert_eq!(max_gap_size, 0);
+        assert!(!cigar.contains("DDDDD"));
+    }
+
+    #[test]
+    fn test_ordinary_flanked_exact_target_still_verifies() {
+        let mut aligner = setup_aligner();
+        let guide = b"CTATTCAGTTCCCATATCCC";
+        let window = b"GGGCACTATTCAGTTCCCATATCCCGGAAA";
+        assert_eq!(&window[5..25], guide);
+
+        let result = scan_window(&mut aligner, guide, window, 0, 1, 2, 0.75, false);
+        assert!(
+            result.is_some(),
+            "ordinary exact target in flanked window should verify"
+        );
+        let (_score, cigar, mismatches, gaps, max_gap_size, leading_dels) = result.unwrap();
+        assert_eq!(leading_dels, 5);
+        assert_eq!(cigar, "MMMMMMMMMMMMMMMMMMMM");
+        assert_eq!(mismatches, 0);
+        assert_eq!(gaps, 0);
+        assert_eq!(max_gap_size, 0);
+    }
+
+    #[test]
+    fn test_internal_bulge_remains_internal_with_flanked_window() {
+        let mut aligner = setup_aligner();
+        let guide = b"ATCGATCGAT";
+        let window = b"GGGATCGAATCGATTTT";
+
+        let result = scan_window(&mut aligner, guide, window, 1, 1, 1, 0.75, false);
+        assert!(
+            result.is_some(),
+            "one-base internal bulge should still verify"
+        );
+        let (_score, cigar, _mismatches, gaps, max_gap_size, leading_dels) = result.unwrap();
+        assert_eq!(leading_dels, 3);
+        assert_eq!(gaps, 1);
+        assert_eq!(max_gap_size, 1);
+        assert!(cigar.contains('D') || cigar.contains('I'));
+        assert_ne!(cigar, "MMMMMMMMMM");
+    }
+
+    #[test]
+    fn test_partial_guide_match_in_flanked_window_is_rejected() {
+        let mut aligner = setup_aligner();
+        let guide = b"GGAAACGAATGGAGTGTAAT";
+        let window = b"GGAATGGAAACGAATGGAAT";
+
+        let result = scan_window(&mut aligner, guide, window, 0, 1, 2, 0.75, false);
+        assert!(
+            result.is_none(),
+            "reference-window free ends must not allow partial guide matches"
+        );
+    }
+
+    #[test]
+    fn test_reverse_columba_candidate_with_mixed_case_reference() {
+        let guide = b"GAGTCCGAGCAGAAGAAGAA";
+        let guide_rc = reverse_complement(guide);
+        let mut seq = b"TTGGGGGGGG".to_vec();
+        seq.extend(guide_rc.iter().map(u8::to_ascii_lowercase));
+        seq.extend_from_slice(b"tttttt");
+        let candidate =
+            parse_candidate("guide_20bp\t16\tchr1\t11\t60\t20M\t*\t0\t0\t*\t*\tAS:i:0\tNM:i:0");
+
+        let hits = verify_test_candidates(vec![candidate], vec![("chr1".to_string(), seq)]);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].pos, 10);
+        assert_eq!(hits[0].strand, '-');
+        assert_eq!(hits[0].target_seq, guide.to_vec());
+        assert_eq!(hits[0].pam_seq, Some("CC".to_string()));
+        assert_eq!(hits[0].cigar, "MMMMMMMMMMMMMMMMMMMM");
+    }
+
+    #[test]
+    fn test_scan_window_reports_offsets_with_reference_overhangs() {
+        let guide = b"GAGTCCGAGCAGAAGAAGAA";
+        for (window, expected_offset) in [
+            (&b"GAGTCCGAGCAGAAGAAGAATTTTT"[..], 0usize),
+            (&b"AAAAAGAGTCCGAGCAGAAGAAGAATTTTT"[..], 5usize),
+            (&b"AAAGAGTCCGAGCAGAAGAAGAATTTTTTT"[..], 3usize),
+            (&b"AAAAAAAAAAGAGTCCGAGCAGAAGAAGAA"[..], 10usize),
+        ] {
+            let mut aligner = setup_aligner();
+            let result = scan_window(&mut aligner, guide, window, 0, 1, 2, 0.75, false)
+                .expect("exact guide substring should verify");
+            assert_eq!(result.1, "MMMMMMMMMMMMMMMMMMMM");
+            assert_eq!(result.5, expected_offset);
+        }
     }
 
     #[test]
