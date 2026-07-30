@@ -6,4 +6,4 @@ The `controlled/` benchmark checks correctness on a small reference with known C
 
 Future chromosome-scale and genome-scale benchmarks should live alongside this directory and focus on runtime, memory use, and scalability.
 
-The checked-in controlled results were generated with implementation tag `columba-v0.1`.
+The checked-in controlled results were originally introduced with implementation tag `columba-v0.1` and updated after the lowercase FASTA and flanked-window WFA2 verification fixes on `columba-wfa2-cfd`.

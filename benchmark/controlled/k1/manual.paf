@@ -9,6 +9,7 @@ Guide	20	0	20	+	repetitive_target	112	10	30	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:
 Guide	20	0	20	+	repetitive_target	112	34	54	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
 Guide	20	0	20	+	repetitive_target	112	58	78	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
 Guide	20	0	20	+	repetitive_target	112	82	102	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	terminal_deletion_3prime	39	10	30	19	20	255	as:i:3	nm:i:1	ng:i:0	bs:i:0	cg:Z:19=1X	cf:f:0.0000
 Guide	20	0	20	+	terminal_deletion_5prime	39	9	29	19	20	255	as:i:3	nm:i:1	ng:i:0	bs:i:0	cg:Z:1X19=	cf:f:0.0000
 Guide	20	0	20	+	terminal_insertion_3prime	40	10	30	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
 Guide	20	0	20	+	terminal_insertion_5prime	41	11	31	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000

@@ -11,18 +11,18 @@ Both modes use the same controlled reference, guide, PAM, WFA2 verification path
 
 Success means the manual and automatic PAF files are byte-for-byte identical without sorting.
 
-Observed results for `columba-v0.1`:
+Observed results after the lowercase FASTA and flanked-window WFA2 verification fixes on `columba-wfa2-cfd`:
 
 ```text
 k	manual_records	automatic_records	paf_byte_identical	manual_exit	automatic_exit	manual_candidates	automatic_candidates	stderr_diff
 0	12	12	yes	0	0	12	not_observed	none
-1	16	16	yes	0	0	17	not_observed	qname_or_other
-2	21	21	yes	0	0	22	not_observed	qname_or_other
-3	21	21	yes	0	0	22	not_observed	qname_or_other
-4	21	21	yes	0	0	22	not_observed	qname_or_other
+1	17	17	yes	0	0	17	not_observed	none
+2	22	22	yes	0	0	22	not_observed	none
+3	22	22	yes	0	0	22	not_observed	none
+4	22	22	yes	0	0	22	not_observed	none
 ```
 
-The expected stderr difference for `k=1..4` is only the query name in the WFA2-failed candidate warning: archived SAM files use `guide_20bp`, while automatic mode creates a temporary query FASTA with header `guide`.
+The previous checked-in expected counts were `12, 16, 21, 21, 21`. They increased to `12, 17, 22, 22, 22` after correcting lowercase soft-masked FASTA verification and configuring WFA2 to align guides ends-free against flanked reference windows. The corrected verifier now accepts terminal reference overhangs without converting them into spurious internal gaps, so manual SAM mode and automatic Columba mode no longer emit QNAME-only WFA2-failure stderr differences for this benchmark.
 
 Both modes also emit the same near-end PAM warning where the adjacent PAM cannot be extracted:
 
