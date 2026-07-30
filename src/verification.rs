@@ -49,6 +49,10 @@ pub(crate) fn alignment_reference_span(cigar: &str) -> usize {
         .sum()
 }
 
+pub(crate) fn uppercase_ascii_sequence(seq: &[u8]) -> Vec<u8> {
+    seq.iter().map(u8::to_ascii_uppercase).collect()
+}
+
 fn extract_cfd_target_from_alignment(
     oriented_window: &[u8],
     alignment_offset: usize,
@@ -243,12 +247,13 @@ pub(crate) fn verify_columba_candidates(
         }
 
         let window_seq = &seq[window.start..window.end];
+        let normalized_window = uppercase_ascii_sequence(window_seq);
         let reverse_window;
         let (guide, strand, alignment_window): (&Arc<Vec<u8>>, char, &[u8]) = if candidate.reverse {
-            reverse_window = reverse_complement(window_seq);
+            reverse_window = reverse_complement(&normalized_window);
             (guide_fwd, '-', &reverse_window)
         } else {
-            (guide_fwd, '+', window_seq)
+            (guide_fwd, '+', &normalized_window)
         };
         let mut aligner = AffineWavefronts::with_penalties(0, 3, 5, 1);
 
@@ -492,10 +497,11 @@ mod tests {
         let guide = Arc::new(args.guide.as_bytes().to_vec());
         let mut aligner = setup_aligner();
         let window = &seq[window_start..window_end];
+        let normalized_window = uppercase_ascii_sequence(window);
         let (score, cigar, _, _, _, leading_dels) = scan_window(
             &mut aligner,
             &guide,
-            window,
+            &normalized_window,
             args.max_mismatches,
             args.max_bulges,
             args.max_bulge_size,
@@ -511,7 +517,7 @@ mod tests {
             score,
             cigar,
             guide,
-            window,
+            &normalized_window,
             leading_dels,
             &args,
         )
@@ -540,6 +546,22 @@ mod tests {
         assert_eq!(hits[0].ref_id, "chr1");
         assert_eq!(hits[0].strand, '+');
         assert!(hits[0].cigar.contains('M'));
+    }
+
+    #[test]
+    fn test_verify_columba_uppercase_guide_matches_lowercase_reference() {
+        let guide = b"gagtccgagcagaagaagaa";
+        let mut seq = b"tttt".to_vec();
+        seq.extend_from_slice(guide);
+        seq.extend_from_slice(b"ggaaaa");
+        let candidate =
+            parse_candidate("guide_20bp\t0\tchr1\t5\t60\t20M\t*\t0\t0\t*\t*\tAS:i:0\tNM:i:0");
+
+        let hits = verify_test_candidates(vec![candidate], vec![("chr1".to_string(), seq)]);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].ref_id, "chr1");
+        assert_eq!(hits[0].strand, '+');
+        assert_eq!(hits[0].target_seq, b"GAGTCCGAGCAGAAGAAGAA".to_vec());
     }
 
     #[test]

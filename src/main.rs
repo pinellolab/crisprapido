@@ -19,7 +19,8 @@ use columba::{parse_columba_sam_file, run_columba, ColumbaRunConfig};
 use hit::Hit;
 use reporting::report_filtered_hits;
 use verification::{
-    build_verified_hit, load_reference_records, scan_window, verify_columba_candidates,
+    build_verified_hit, load_reference_records, scan_window, uppercase_ascii_sequence,
+    verify_columba_candidates,
 };
 
 fn reverse_complement(seq: &[u8]) -> Vec<u8> {
@@ -210,12 +211,13 @@ fn main() {
                     if window.len() < guide_len {
                         return None;
                     }
+                    let normalized_window = uppercase_ascii_sequence(window);
 
                     if let Some((score, cigar, _mismatches, _gaps, _max_gap_size, leading_dels)) =
                         scan_window(
                             aligner,
                             &guide_fwd,
-                            window,
+                            &normalized_window,
                             args.max_mismatches,
                             args.max_bulges,
                             args.max_bulge_size,
@@ -231,7 +233,7 @@ fn main() {
                             score,
                             cigar.clone(),
                             Arc::clone(&guide_fwd),
-                            window,
+                            &normalized_window,
                             leading_dels,
                             &args,
                         ));
@@ -241,7 +243,7 @@ fn main() {
                         scan_window(
                             aligner,
                             &guide_rc,
-                            window,
+                            &normalized_window,
                             args.max_mismatches,
                             args.max_bulges,
                             args.max_bulge_size,
@@ -257,7 +259,7 @@ fn main() {
                             score,
                             cigar.clone(),
                             Arc::clone(&guide_rc),
-                            window,
+                            &normalized_window,
                             leading_dels,
                             &args,
                         ));
