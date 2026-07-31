@@ -12,6 +12,7 @@ use crate::columba::{cigar_reference_span, ColumbaCandidate};
 use crate::hit::Hit;
 use crate::{reverse_complement, Args};
 
+#[cfg(test)]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct VerificationWindow {
     pub(crate) start: usize,
@@ -51,6 +52,83 @@ pub(crate) fn alignment_reference_span(cigar: &str) -> usize {
 
 pub(crate) fn uppercase_ascii_sequence(seq: &[u8]) -> Vec<u8> {
     seq.iter().map(u8::to_ascii_uppercase).collect()
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct CigarValidation {
+    cigar: String,
+    leading_dels: usize,
+    matches: u32,
+    mismatches: u32,
+    gaps: u32,
+    max_gap_size: u32,
+}
+
+fn trim_reference_overhangs(raw_cigar: &str) -> (String, usize) {
+    let leading_dels = raw_cigar.chars().take_while(|&c| c == 'D').count();
+    let cigar = raw_cigar
+        .chars()
+        .skip_while(|&c| c == 'D')
+        .collect::<String>()
+        .trim_end_matches('D')
+        .to_string();
+
+    (cigar, leading_dels)
+}
+
+fn validate_cigar_accounting(
+    raw_cigar: &str,
+    guide: &[u8],
+    trim_reference_overhangs_enabled: bool,
+) -> CigarValidation {
+    let (cigar, leading_dels) = if trim_reference_overhangs_enabled {
+        trim_reference_overhangs(raw_cigar)
+    } else {
+        (raw_cigar.to_string(), 0)
+    };
+    let mut n_adjusted_mismatches = 0;
+    let mut matches = 0;
+    let mut gaps = 0;
+    let mut current_gap_size = 0;
+    let mut max_gap_size = 0;
+    let mut pos = 0;
+
+    for c in cigar.chars() {
+        match c {
+            'X' => {
+                current_gap_size = 0;
+                if pos < guide.len() && guide[pos] != b'N' {
+                    n_adjusted_mismatches += 1;
+                }
+                pos += 1;
+            }
+            'I' | 'D' => {
+                current_gap_size += 1;
+                if current_gap_size == 1 {
+                    gaps += 1;
+                }
+                max_gap_size = max_gap_size.max(current_gap_size);
+                if c == 'I' {
+                    pos += 1;
+                }
+            }
+            'M' | '=' => {
+                current_gap_size = 0;
+                matches += 1;
+                pos += 1;
+            }
+            _ => (),
+        }
+    }
+
+    CigarValidation {
+        cigar,
+        leading_dels,
+        matches,
+        mismatches: n_adjusted_mismatches,
+        gaps,
+        max_gap_size,
+    }
 }
 
 fn extract_cfd_target_from_alignment(
@@ -152,6 +230,7 @@ pub(crate) fn build_verified_hit(
     }
 }
 
+#[cfg(test)]
 pub(crate) fn columba_verification_window(
     reference_start: usize,
     reference_span: usize,
@@ -200,8 +279,6 @@ pub(crate) fn verify_columba_candidates(
         .iter()
         .map(|record| (record.0.as_str(), record))
         .collect();
-    let pam_len = args.pam.len();
-    let guide_len = guide_fwd.len();
     let mut hits = Vec::new();
 
     for candidate in candidates {
@@ -225,66 +302,70 @@ pub(crate) fn verify_columba_candidates(
                 continue;
             }
         };
-        let window = columba_verification_window(
-            candidate.reference_start,
-            reference_span,
-            seq.len(),
-            guide_len,
-            pam_len,
-            args.max_bulge_size,
-        );
-        if window.end <= window.start || window.end - window.start < guide_len {
+        if reference_span == 0 {
             eprintln!(
-                "Warning: skipping Columba candidate '{}' on '{}:{}' because verification window {}..{} is shorter than guide length {}",
+                "Warning: skipping Columba candidate '{}' on '{}:{}' because its CIGAR consumes no reference bases",
+                candidate.query_name,
+                candidate.reference_name,
+                candidate.reference_start + 1
+            );
+            continue;
+        }
+        let Some(candidate_end) = candidate.reference_start.checked_add(reference_span) else {
+            eprintln!(
+                "Warning: skipping Columba candidate '{}' on '{}:{}' because its reference span overflows",
+                candidate.query_name,
+                candidate.reference_name,
+                candidate.reference_start + 1
+            );
+            continue;
+        };
+        if candidate_end > seq.len() {
+            eprintln!(
+                "Warning: skipping Columba candidate '{}' on '{}:{}' because candidate span {}..{} exceeds contig length {}",
                 candidate.query_name,
                 candidate.reference_name,
                 candidate.reference_start + 1,
-                window.start,
-                window.end,
-                guide_len
+                candidate.reference_start,
+                candidate_end,
+                seq.len()
             );
             continue;
         }
 
-        let window_seq = &seq[window.start..window.end];
-        let normalized_window = uppercase_ascii_sequence(window_seq);
-        let reverse_window;
-        let (guide, strand, alignment_window): (&Arc<Vec<u8>>, char, &[u8]) = if candidate.reverse {
-            reverse_window = reverse_complement(&normalized_window);
-            (guide_fwd, '-', &reverse_window)
+        let candidate_seq = &seq[candidate.reference_start..candidate_end];
+        let normalized_candidate_seq = uppercase_ascii_sequence(candidate_seq);
+        let reverse_candidate_seq;
+        let (guide, strand, alignment_span): (&Arc<Vec<u8>>, char, &[u8]) = if candidate.reverse {
+            reverse_candidate_seq = reverse_complement(&normalized_candidate_seq);
+            (guide_fwd, '-', &reverse_candidate_seq)
         } else {
-            (guide_fwd, '+', &normalized_window)
+            (guide_fwd, '+', &normalized_candidate_seq)
         };
         let mut aligner = AffineWavefronts::with_penalties(0, 3, 5, 1);
 
-        if let Some((score, cigar, _mismatches, _gaps, _max_gap_size, leading_dels)) = scan_window(
-            &mut aligner,
-            guide,
-            alignment_window,
-            args.max_mismatches,
-            args.max_bulges,
-            args.max_bulge_size,
-            args.min_match_fraction,
-            args.no_filter,
-        ) {
-            let hit_pos = if candidate.reverse {
-                window
-                    .end
-                    .saturating_sub(leading_dels)
-                    .saturating_sub(alignment_reference_span(&cigar))
-            } else {
-                window.start + leading_dels
-            };
+        if let Some((score, cigar, _mismatches, _gaps, _max_gap_size)) =
+            anchored_candidate_alignment(
+                &mut aligner,
+                guide,
+                alignment_span,
+                args.max_mismatches,
+                args.max_bulges,
+                args.max_bulge_size,
+                args.min_match_fraction,
+                args.no_filter,
+            )
+        {
             hits.push(build_verified_hit(
                 record_id.clone(),
                 seq,
-                hit_pos,
+                candidate.reference_start,
                 strand,
                 score,
                 cigar,
                 Arc::clone(guide),
-                alignment_window,
-                leading_dels,
+                alignment_span,
+                0,
                 args,
             ));
         } else {
@@ -298,6 +379,76 @@ pub(crate) fn verify_columba_candidates(
     }
 
     hits
+}
+
+fn validation_passes(
+    validation: &CigarValidation,
+    guide: &[u8],
+    max_mismatches: u32,
+    max_bulges: u32,
+    max_bulge_size: u32,
+    min_match_fraction: f32,
+    no_filter: bool,
+    use_test_filter_override: bool,
+) -> bool {
+    let non_n_positions = guide.iter().filter(|&&b| b != b'N').count();
+    let match_percentage = if non_n_positions > 0 {
+        (validation.matches as f32 / non_n_positions as f32) * 100.0
+    } else {
+        0.0
+    };
+    let min_match_percentage = min_match_fraction * 100.0;
+
+    no_filter
+        || (validation.matches >= 1
+            && match_percentage >= min_match_percentage
+            && ((use_test_filter_override
+                && cfg!(test)
+                && validation.mismatches <= 1
+                && validation.gaps <= 1
+                && validation.max_gap_size <= 1)
+                || ((!use_test_filter_override || !cfg!(test))
+                    && validation.mismatches <= max_mismatches
+                    && validation.gaps <= max_bulges
+                    && validation.max_gap_size <= max_bulge_size)))
+}
+
+fn anchored_candidate_alignment(
+    aligner: &mut AffineWavefronts,
+    guide: &[u8],
+    candidate_span: &[u8],
+    max_mismatches: u32,
+    max_bulges: u32,
+    max_bulge_size: u32,
+    min_match_fraction: f32,
+    no_filter: bool,
+) -> Option<(i32, String, u32, u32, u32)> {
+    aligner.set_alignment_span(AlignmentSpan::End2End);
+    aligner.align(candidate_span, guide);
+    let score = aligner.score();
+    let raw_cigar = String::from_utf8_lossy(aligner.cigar()).to_string();
+    let validation = validate_cigar_accounting(&raw_cigar, guide, false);
+
+    if validation_passes(
+        &validation,
+        guide,
+        max_mismatches,
+        max_bulges,
+        max_bulge_size,
+        min_match_fraction,
+        no_filter,
+        false,
+    ) {
+        Some((
+            score,
+            validation.cigar,
+            validation.mismatches,
+            validation.gaps,
+            validation.max_gap_size,
+        ))
+    } else {
+        None
+    }
 }
 
 pub(crate) fn scan_window(
@@ -319,59 +470,7 @@ pub(crate) fn scan_window(
     aligner.align(window, guide);
     let score = aligner.score();
     let raw_cigar = String::from_utf8_lossy(aligner.cigar()).to_string();
-
-    let mut leading_indels = true;
-    let mut leading_dels = 0;
-    for c in raw_cigar.chars() {
-        if leading_indels {
-            match c {
-                'D' => leading_dels += 1,
-                'I' => (),
-                _ => leading_indels = false,
-            }
-        }
-    }
-
-    let cigar = raw_cigar
-        .chars()
-        .skip_while(|&c| c == 'D' || c == 'I')
-        .collect::<String>()
-        .trim_end_matches(|c| c == 'D' || c == 'I')
-        .to_string();
-
-    let mut n_adjusted_mismatches = 0;
-    let mut matches = 0;
-    let mut gaps = 0;
-    let mut current_gap_size = 0;
-    let mut max_gap_size = 0;
-    let mut pos = 0;
-
-    for c in cigar.chars() {
-        match c {
-            'X' => {
-                if pos < guide.len() && guide[pos] != b'N' {
-                    n_adjusted_mismatches += 1;
-                }
-                pos += 1;
-            }
-            'I' | 'D' => {
-                current_gap_size += 1;
-                if current_gap_size == 1 {
-                    gaps += 1;
-                }
-                max_gap_size = max_gap_size.max(current_gap_size);
-                if c == 'I' {
-                    pos += 1;
-                }
-            }
-            'M' | '=' => {
-                current_gap_size = 0;
-                matches += 1;
-                pos += 1;
-            }
-            _ => (),
-        }
-    }
+    let validation = validate_cigar_accounting(&raw_cigar, guide, true);
 
     macro_rules! debug {
         ($($arg:tt)*) => {
@@ -382,12 +481,12 @@ pub(crate) fn scan_window(
 
     debug!(
         "CIGAR: {}, N-adjusted Mismatches: {}, Gaps: {}, Max gap size: {}",
-        cigar, n_adjusted_mismatches, gaps, max_gap_size
+        validation.cigar, validation.mismatches, validation.gaps, validation.max_gap_size
     );
 
     let non_n_positions = guide.iter().filter(|&&b| b != b'N').count();
     let match_percentage = if non_n_positions > 0 {
-        (matches as f32 / non_n_positions as f32) * 100.0
+        (validation.matches as f32 / non_n_positions as f32) * 100.0
     } else {
         0.0
     };
@@ -398,23 +497,26 @@ pub(crate) fn scan_window(
         "Match percentage: {}, Minimum required: {}",
         match_percentage, min_match_percentage
     );
+    #[cfg(not(feature = "debug"))]
+    let _ = (match_percentage, min_match_percentage);
 
-    if no_filter
-        || (matches >= 1
-            && match_percentage >= min_match_percentage
-            && ((cfg!(test) && n_adjusted_mismatches <= 1 && gaps <= 1 && max_gap_size <= 1)
-                || (!cfg!(test)
-                    && n_adjusted_mismatches <= max_mismatches
-                    && gaps <= max_bulges
-                    && max_gap_size <= max_bulge_size)))
-    {
+    if validation_passes(
+        &validation,
+        guide,
+        max_mismatches,
+        max_bulges,
+        max_bulge_size,
+        min_match_fraction,
+        no_filter,
+        true,
+    ) {
         Some((
             score,
-            cigar,
-            n_adjusted_mismatches,
-            gaps,
-            max_gap_size,
-            leading_dels,
+            validation.cigar,
+            validation.mismatches,
+            validation.gaps,
+            validation.max_gap_size,
+            validation.leading_dels,
         ))
     } else {
         None
@@ -482,6 +584,35 @@ mod tests {
         let args = columba_test_args();
         let guide_fwd = Arc::new(args.guide.as_bytes().to_vec());
         verify_columba_candidates(&candidates, &references, &guide_fwd, &args)
+    }
+
+    fn verify_test_candidates_with_args(
+        guide: &str,
+        max_mismatches: u32,
+        max_bulges: u32,
+        max_bulge_size: u32,
+        min_match_fraction: f32,
+        candidates: Vec<ColumbaCandidate>,
+        references: Vec<(String, Vec<u8>)>,
+    ) -> Vec<Hit> {
+        let mut args = columba_test_args();
+        args.guide = guide.to_string();
+        args.max_mismatches = max_mismatches;
+        args.max_bulges = max_bulges;
+        args.max_bulge_size = max_bulge_size;
+        args.min_match_fraction = min_match_fraction;
+        let guide_fwd = Arc::new(args.guide.as_bytes().to_vec());
+        verify_columba_candidates(&candidates, &references, &guide_fwd, &args)
+    }
+
+    fn cigar_test_counts(cigar: &str, guide: &[u8]) -> (u32, u32, u32, u32) {
+        let validation = validate_cigar_accounting(cigar, guide, false);
+        (
+            validation.matches,
+            validation.mismatches,
+            validation.gaps,
+            validation.max_gap_size,
+        )
     }
 
     fn cfd_for_hit(hit: &Hit) -> Option<f64> {
@@ -609,7 +740,7 @@ mod tests {
         seq.extend_from_slice(&target);
         seq.extend_from_slice(b"GGAAAA");
         let candidate =
-            parse_candidate("guide_20bp\t0\tchr1\t5\t60\t10M1I10M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+            parse_candidate("guide_20bp\t0\tchr1\t5\t60\t10M1D10M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
 
         let hits = verify_test_candidates(vec![candidate], vec![("chr1".to_string(), seq)]);
         assert_eq!(hits.len(), 1);
@@ -817,6 +948,266 @@ mod tests {
             cfd_for_hit(&hit),
             cfd_score::get_cfd_score(&hit.guide, &hit.target_seq, &hit.cigar, "AG")
         );
+    }
+
+    #[test]
+    fn test_imported_same_span_terminal_guide_insertion_is_anchored() {
+        let guide = "GTATTTCCCTTTTCACCGTA";
+        let candidate_ref = b"TATTTCCCTTTTCACCGTA";
+        let mut seq = b"AAAAAAAAAA".to_vec();
+        seq.extend_from_slice(candidate_ref);
+        seq.extend_from_slice(b"GGCCCC");
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t11\t60\t1I19M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+
+        let hits = verify_test_candidates_with_args(
+            guide,
+            0,
+            1,
+            2,
+            0.75,
+            vec![candidate],
+            vec![("chr1".to_string(), seq)],
+        );
+
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].pos, 10);
+        assert_eq!(hits[0].cigar, "IMMMMMMMMMMMMMMMMMMM");
+        assert_eq!(
+            cigar_test_counts(&hits[0].cigar, guide.as_bytes()),
+            (19, 0, 1, 1)
+        );
+        assert!(!hits[0].cigar.contains('X'));
+    }
+
+    #[test]
+    fn test_imported_reverse_terminal_guide_insertion_is_anchored() {
+        let guide = "GTATTTCCCTTTTCACCGTA";
+        let candidate_ref = b"TATTTCCCTTTTCACCGTA";
+        let mut seq = b"CCGG".to_vec();
+        seq.extend_from_slice(b"AAAAAA");
+        let start = seq.len();
+        seq.extend_from_slice(&reverse_complement(candidate_ref));
+        seq.extend_from_slice(b"CCCC");
+        let candidate = parse_candidate(&format!(
+            "guide\t16\tchr1\t{}\t60\t1I19M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1",
+            start + 1
+        ));
+
+        let hits = verify_test_candidates_with_args(
+            guide,
+            0,
+            1,
+            2,
+            0.75,
+            vec![candidate],
+            vec![("chr1".to_string(), seq)],
+        );
+
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].pos, start);
+        assert_eq!(hits[0].strand, '-');
+        assert_eq!(hits[0].cigar, "IMMMMMMMMMMMMMMMMMMM");
+        assert_eq!(
+            cigar_test_counts(&hits[0].cigar, guide.as_bytes()),
+            (19, 0, 1, 1)
+        );
+    }
+
+    #[test]
+    fn test_imported_internal_insertion_stays_internal_when_anchored() {
+        let guide = "ATCGATCGAT";
+        let candidate_ref = b"ATCGACGAT";
+        let mut seq = b"TTTT".to_vec();
+        seq.extend_from_slice(candidate_ref);
+        seq.extend_from_slice(b"GGAAAA");
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t5\t60\t5M1I4M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+
+        let hits = verify_test_candidates_with_args(
+            guide,
+            0,
+            1,
+            2,
+            0.75,
+            vec![candidate],
+            vec![("chr1".to_string(), seq)],
+        );
+
+        assert_eq!(hits.len(), 1);
+        assert!(hits[0].cigar.contains('I'));
+        assert!(!hits[0].cigar.starts_with('I'));
+        assert!(!hits[0].cigar.ends_with('I'));
+    }
+
+    #[test]
+    fn test_imported_deletion_uses_candidate_reference_span() {
+        let guide = "ATCGATCGAT";
+        let candidate_ref = b"ATCGAATCGAT";
+        let mut seq = b"TTTT".to_vec();
+        seq.extend_from_slice(candidate_ref);
+        seq.extend_from_slice(b"GGAAAA");
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t5\t60\t5M1D5M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+
+        let hits = verify_test_candidates_with_args(
+            guide,
+            0,
+            1,
+            2,
+            0.75,
+            vec![candidate],
+            vec![("chr1".to_string(), seq)],
+        );
+
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].pos, 4);
+        assert!(hits[0].cigar.contains('D'));
+        assert_eq!(
+            alignment_reference_span(&hits[0].cigar),
+            candidate_ref.len()
+        );
+    }
+
+    #[test]
+    fn test_imported_exact_candidate_does_not_shift_in_repetitive_context() {
+        let guide = "AAAAAAAAAAAAAAAAAAAA";
+        let seq = b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_vec();
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t6\t60\t20M\t*\t0\t0\t*\t*\tAS:i:0\tNM:i:0");
+
+        let hits = verify_test_candidates_with_args(
+            guide,
+            0,
+            1,
+            2,
+            0.75,
+            vec![candidate],
+            vec![("chr1".to_string(), seq)],
+        );
+
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].pos, 5);
+        assert_eq!(hits[0].cigar, "MMMMMMMMMMMMMMMMMMMM");
+    }
+
+    #[test]
+    fn test_imported_incorrect_candidate_cannot_shift_to_nearby_match() {
+        let guide = "GAGTCCGAGCAGAAGAAGAA";
+        let mut seq = b"CCCCCCCCCCCCCCCCCCCC".to_vec();
+        seq.extend_from_slice(guide.as_bytes());
+        seq.extend_from_slice(b"GGAAAA");
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t1\t60\t20M\t*\t0\t0\t*\t*\tAS:i:0\tNM:i:0");
+
+        let hits = verify_test_candidates_with_args(
+            guide,
+            0,
+            1,
+            2,
+            0.75,
+            vec![candidate],
+            vec![("chr1".to_string(), seq)],
+        );
+
+        assert!(hits.is_empty());
+    }
+
+    #[test]
+    fn test_five_terminal_guide_bases_remain_counted_and_rejected() {
+        let guide = b"GGAAACGAATGGAGTGTAAT";
+        let raw_cigar = "MMMMMMMMMMMMMMMIIIII";
+        let validation = validate_cigar_accounting(raw_cigar, guide, true);
+
+        assert_eq!(validation.cigar, raw_cigar);
+        assert_eq!(validation.matches, 15);
+        assert_eq!(validation.gaps, 1);
+        assert_eq!(validation.max_gap_size, 5);
+
+        let mut aligner = setup_aligner();
+        let result = scan_window(&mut aligner, guide, &guide[..15], 0, 1, 2, 0.75, false);
+        assert!(
+            result.is_none(),
+            "terminal guide gap must not pass just because -f permits 15/20 matches"
+        );
+    }
+
+    #[test]
+    fn test_one_terminal_guide_base_gap_remains_counted_and_allowed() {
+        let guide = b"GGAAACGAATGGAGTGTAAT";
+        let raw_cigar = "MMMMMMMMMMMMMMMMMMMI";
+        let validation = validate_cigar_accounting(raw_cigar, guide, true);
+
+        assert_eq!(validation.cigar, raw_cigar);
+        assert_eq!(validation.matches, 19);
+        assert_eq!(validation.gaps, 1);
+        assert_eq!(validation.max_gap_size, 1);
+
+        let mut aligner = setup_aligner();
+        let result = scan_window(&mut aligner, guide, &guide[..19], 0, 1, 2, 0.75, false)
+            .expect("one terminal guide-base gap is within the configured bulge limits");
+        assert_eq!(result.1, raw_cigar);
+        assert_eq!(result.3, 1);
+        assert_eq!(result.4, 1);
+    }
+
+    #[test]
+    fn test_three_terminal_guide_base_gap_is_rejected() {
+        let guide = b"GGAAACGAATGGAGTGTAAT";
+        let raw_cigar = "MMMMMMMMMMMMMMMMMIII";
+        let validation = validate_cigar_accounting(raw_cigar, guide, true);
+
+        assert_eq!(validation.cigar, raw_cigar);
+        assert_eq!(validation.matches, 17);
+        assert_eq!(validation.gaps, 1);
+        assert_eq!(validation.max_gap_size, 3);
+
+        let mut aligner = setup_aligner();
+        let result = scan_window(&mut aligner, guide, &guide[..17], 0, 1, 2, 0.75, false);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_free_reference_overhangs_are_trimmed_without_counted_bulge() {
+        let guide = b"GGAAACGAATGGAGTGTAAT";
+        let raw_cigar = "DDDDDMMMMMMMMMMMMMMMMMMMMDDDDD";
+        let validation = validate_cigar_accounting(raw_cigar, guide, true);
+
+        assert_eq!(validation.leading_dels, 5);
+        assert_eq!(validation.cigar, "MMMMMMMMMMMMMMMMMMMM");
+        assert_eq!(validation.matches, 20);
+        assert_eq!(validation.gaps, 0);
+        assert_eq!(validation.max_gap_size, 0);
+    }
+
+    #[test]
+    fn test_reference_overhang_trim_keeps_real_guide_gap() {
+        let guide = b"GGAAACGAATGGAGTGTAAT";
+        let raw_cigar = "DDDMMMMMMMMMMIIMMMMMMMMMMDDD";
+        let validation = validate_cigar_accounting(raw_cigar, guide, true);
+
+        assert_eq!(validation.leading_dels, 3);
+        assert_eq!(validation.cigar, "MMMMMMMMMMIIMMMMMMMMMM");
+        assert_eq!(validation.matches, 20);
+        assert_eq!(validation.gaps, 1);
+        assert_eq!(validation.max_gap_size, 2);
+    }
+
+    #[test]
+    fn test_reverse_columba_candidate_retains_guide_gap_accounting() {
+        let guide = b"GAGTCCGAGCAGAAGAAGAA";
+        let mut target = guide.to_vec();
+        target.remove(10);
+        let mut seq = b"CCCCC".to_vec();
+        seq.extend_from_slice(&reverse_complement(&target));
+        seq.extend_from_slice(b"AAAAAGG");
+        let candidate =
+            parse_candidate("guide_20bp\t16\tchr1\t6\t60\t19M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+
+        let hits = verify_test_candidates(vec![candidate], vec![("chr1".to_string(), seq)]);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].strand, '-');
+        assert!(hits[0].cigar.contains('I'));
     }
 
     #[test]

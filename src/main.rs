@@ -15,7 +15,9 @@ mod hit;
 mod reporting;
 mod verification;
 
-use columba::{parse_columba_sam_file, run_columba, ColumbaRunConfig};
+use columba::{
+    candidate_edit_distance_bound, parse_columba_sam_file, run_columba, ColumbaRunConfig,
+};
 use hit::Hit;
 use reporting::report_filtered_hits;
 use verification::{
@@ -162,7 +164,11 @@ fn main() {
                 columba_bin,
                 index_prefix: columba_index,
                 guide: &args.guide,
-                max_mismatches: args.max_mismatches,
+                candidate_edit_distance: candidate_edit_distance_bound(
+                    args.max_mismatches,
+                    args.max_bulges,
+                    args.max_bulge_size,
+                ),
                 threads: args.threads,
                 keep_sam: args.keep_columba_sam,
             })

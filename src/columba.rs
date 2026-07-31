@@ -10,7 +10,7 @@ pub(crate) struct ColumbaRunConfig<'a> {
     pub(crate) columba_bin: &'a Path,
     pub(crate) index_prefix: &'a Path,
     pub(crate) guide: &'a str,
-    pub(crate) max_mismatches: u32,
+    pub(crate) candidate_edit_distance: u32,
     pub(crate) threads: Option<usize>,
     pub(crate) keep_sam: bool,
 }
@@ -116,6 +116,17 @@ fn write_columba_log(path: &Path, stdout: &[u8], stderr: &[u8]) -> Result<(), St
         .map_err(|e| format!("Failed to write Columba log '{}': {}", path.display(), e))
 }
 
+pub(crate) fn candidate_edit_distance_bound(
+    max_mismatches: u32,
+    max_bulges: u32,
+    max_bulge_size: u32,
+) -> u32 {
+    // WFA2 remains the authoritative filter: this total edit bound is a
+    // candidate superset for at most m substitutions plus b gap groups of
+    // at most z bases each.
+    max_mismatches.saturating_add(max_bulges.saturating_mul(max_bulge_size))
+}
+
 pub(crate) fn run_columba(config: &ColumbaRunConfig<'_>) -> Result<ColumbaRunOutput, String> {
     if !config.columba_bin.exists() {
         return Err(format!(
@@ -168,7 +179,7 @@ pub(crate) fn run_columba(config: &ColumbaRunConfig<'_>) -> Result<ColumbaRunOut
             .arg("-m")
             .arg("edit")
             .arg("-e")
-            .arg(config.max_mismatches.to_string());
+            .arg(config.candidate_edit_distance.to_string());
         if let Some(threads) = config.threads {
             command.arg("-t").arg(threads.to_string());
         }
@@ -498,6 +509,31 @@ mod tests {
         fs::set_permissions(path, permissions).unwrap();
     }
 
+    #[test]
+    fn test_candidate_edit_distance_bound_zero() {
+        assert_eq!(candidate_edit_distance_bound(0, 0, 0), 0);
+    }
+
+    #[test]
+    fn test_candidate_edit_distance_bound_single_two_base_bulge() {
+        assert_eq!(candidate_edit_distance_bound(0, 1, 2), 2);
+    }
+
+    #[test]
+    fn test_candidate_edit_distance_bound_mismatches_plus_bulge() {
+        assert_eq!(candidate_edit_distance_bound(2, 1, 2), 4);
+    }
+
+    #[test]
+    fn test_candidate_edit_distance_bound_multiple_gap_groups() {
+        assert_eq!(candidate_edit_distance_bound(1, 2, 3), 7);
+    }
+
+    #[test]
+    fn test_candidate_edit_distance_bound_saturates_on_overflow() {
+        assert_eq!(candidate_edit_distance_bound(u32::MAX - 1, 2, 3), u32::MAX);
+    }
+
     #[cfg(unix)]
     #[test]
     fn test_run_columba_missing_executable() {
@@ -509,7 +545,7 @@ mod tests {
             columba_bin: &dir.join("missing-columba"),
             index_prefix: &index_prefix,
             guide: "GAGTCCGAGCAGAAGAAGAA",
-            max_mismatches: 1,
+            candidate_edit_distance: 1,
             threads: None,
             keep_sam: false,
         })
@@ -530,7 +566,7 @@ mod tests {
             columba_bin: &bin,
             index_prefix: &dir.join("missing-index"),
             guide: "GAGTCCGAGCAGAAGAAGAA",
-            max_mismatches: 1,
+            candidate_edit_distance: 1,
             threads: None,
             keep_sam: false,
         })
@@ -553,7 +589,7 @@ mod tests {
             columba_bin: &bin,
             index_prefix: &index_prefix,
             guide: "GAGTCCGAGCAGAAGAAGAA",
-            max_mismatches: 1,
+            candidate_edit_distance: 1,
             threads: Some(2),
             keep_sam: false,
         })
@@ -570,6 +606,33 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn test_run_columba_uses_candidate_edit_distance() {
+        let dir = unique_test_dir("candidate-edit-distance");
+        let bin = dir.join("columba");
+        let index_prefix = dir.join("idx");
+        write_dummy_index(&index_prefix);
+        write_mock_executable(
+            &bin,
+            "#!/bin/sh\nout=\"\"\nseen_e=0\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = \"-e\" ]; then\n    shift\n    if [ \"$1\" != \"2\" ]; then\n      echo unexpected -e $1 >&2\n      exit 9\n    fi\n    seen_e=1\n  elif [ \"$1\" = \"-o\" ]; then\n    shift\n    out=\"$1\"\n  fi\n  shift\ndone\nif [ \"$seen_e\" != 1 ]; then\n  echo missing -e >&2\n  exit 10\nfi\nprintf '@HD\\tVN:1.6\\n' > \"$out\"\nprintf 'guide\\t0\\tchr1\\t11\\t60\\t20M\\t*\\t0\\t0\\t*\\t*\\tAS:i:0\\tNM:i:0\\n' >> \"$out\"\nexit 0\n",
+        );
+
+        let output = run_columba(&ColumbaRunConfig {
+            columba_bin: &bin,
+            index_prefix: &index_prefix,
+            guide: "GAGTCCGAGCAGAAGAAGAA",
+            candidate_edit_distance: candidate_edit_distance_bound(0, 1, 2),
+            threads: None,
+            keep_sam: false,
+        })
+        .unwrap();
+
+        assert!(output.sam_path.exists());
+        drop(output);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn test_run_columba_success_with_mocked_executable() {
         let dir = unique_test_dir("success");
         let bin = dir.join("columba");
@@ -581,7 +644,7 @@ mod tests {
             columba_bin: &bin,
             index_prefix: &index_prefix,
             guide: "GAGTCCGAGCAGAAGAAGAA",
-            max_mismatches: 1,
+            candidate_edit_distance: 1,
             threads: Some(2),
             keep_sam: false,
         })
@@ -608,7 +671,7 @@ mod tests {
             columba_bin: &bin,
             index_prefix: &index_prefix,
             guide: "GAGTCCGAGCAGAAGAAGAA",
-            max_mismatches: 1,
+            candidate_edit_distance: 1,
             threads: None,
             keep_sam: false,
         })
@@ -634,7 +697,7 @@ mod tests {
             columba_bin: &bin,
             index_prefix: &index_prefix,
             guide: "GAGTCCGAGCAGAAGAAGAA",
-            max_mismatches: 1,
+            candidate_edit_distance: 1,
             threads: None,
             keep_sam: true,
         })
