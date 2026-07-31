@@ -1,0 +1,42 @@
+@HD	VN:1.6	SO:queryname
+@PG	ID:Columba2.0.3	PN:Columba	CL:/moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../columba/build_Vanilla/columba -r /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference -f benchmark/controlled/D_m0_b1_z2_e2/guide.fa -a all -m edit -e 2 -t 1 -o benchmark/controlled/D_m0_b1_z2_e2/manual.sam
+@SQ	SN:perfect_forward	LN:40
+@SQ	SN:perfect_reverse_complement	LN:40
+@SQ	SN:one_substitution	LN:40
+@SQ	SN:two_substitutions	LN:40
+@SQ	SN:one_bp_insertion_relative_to_guide	LN:41
+@SQ	SN:one_bp_deletion_relative_to_guide	LN:39
+@SQ	SN:two_bp_insertion_relative_to_guide	LN:42
+@SQ	SN:two_bp_deletion_relative_to_guide	LN:38
+@SQ	SN:substitution_plus_insertion	LN:41
+@SQ	SN:substitution_plus_deletion	LN:39
+@SQ	SN:near_beginning	LN:31
+@SQ	SN:near_end	LN:31
+@SQ	SN:two_nearby_occurrences	LN:65
+@SQ	SN:repetitive_target	LN:112
+@SQ	SN:terminal_insertion_5prime	LN:41
+@SQ	SN:terminal_deletion_5prime	LN:39
+@SQ	SN:terminal_insertion_3prime	LN:40
+@SQ	SN:terminal_deletion_3prime	LN:39
+guide	0	perfect_forward	11	0	20M	*	0	0	GAGTCCGAGCAGAAGAAGAA	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	272	perfect_reverse_complement	11	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	one_substitution	11	0	20M	*	0	0	*	*	AS:i:1	NM:i:1	PG:Z:Columba
+guide	256	two_substitutions	11	0	20M	*	0	0	*	*	AS:i:2	NM:i:2	PG:Z:Columba
+guide	256	one_bp_insertion_relative_to_guide	11	0	10M1D10M	*	0	0	*	*	AS:i:1	NM:i:1	PG:Z:Columba
+guide	256	one_bp_deletion_relative_to_guide	11	0	10M1I9M	*	0	0	*	*	AS:i:1	NM:i:1	PG:Z:Columba
+guide	256	two_bp_insertion_relative_to_guide	11	0	10M2D10M	*	0	0	*	*	AS:i:2	NM:i:2	PG:Z:Columba
+guide	256	two_bp_deletion_relative_to_guide	11	0	11M1I1M1I6M	*	0	0	*	*	AS:i:2	NM:i:2	PG:Z:Columba
+guide	256	substitution_plus_insertion	11	0	10M1D10M	*	0	0	*	*	AS:i:2	NM:i:2	PG:Z:Columba
+guide	256	substitution_plus_deletion	11	0	10M1I9M	*	0	0	*	*	AS:i:2	NM:i:2	PG:Z:Columba
+guide	256	near_beginning	2	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	near_end	11	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	two_nearby_occurrences	11	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	two_nearby_occurrences	36	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	repetitive_target	11	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	repetitive_target	35	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	repetitive_target	59	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	repetitive_target	83	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	terminal_insertion_5prime	12	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	terminal_deletion_5prime	11	0	1I19M	*	0	0	*	*	AS:i:1	NM:i:1	PG:Z:Columba
+guide	256	terminal_insertion_3prime	11	0	20M	*	0	0	*	*	AS:i:0	NM:i:0	PG:Z:Columba
+guide	256	terminal_deletion_3prime	11	0	19M1I	*	0	0	*	*	AS:i:1	NM:i:1	PG:Z:Columba

@@ -1,0 +1,36 @@
+[00.000] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.cct...
+[00.001] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.sa.bv.4...
+[00.001] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.sa.4..
+[00.001] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.txt.bin...
+[00.001] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.bwt...
+[00.002] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.brt...
+[00.002] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.rev.brt...
+[00.002] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.pos...
+[00.002] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.sna...
+[00.003] [INFO]	Reading /moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/crisprapido/../results/controlled_index/controlled_reference.fsid...
+[00.003] [INFO]	Populating FM-range table with 10-mers...
+[00.004] [INFO]	Aligning with Columba strategy
+	Mapping mode: ALL
+	Max distance: 1
+	Partitioning strategy: DYNAMIC
+	Distance metric: EDIT
+	Number of threads: 1
+	Sequencing mode: Single-end
+	Reads file: benchmark/controlled/B_m1_b0_z0_e1/guide.fa
+	Output file: benchmark/controlled/B_m1_b0_z0_e1/manual.sam
+	In-text verification switch point: 4
+	CIGAR string calculation: Yes
+	Reorder output: No
+	XA tag: No
+
+[00.004] [INFO]	Start alignment at Fri Jul 31 16:25:43 2026
+[00.005] [INFO]	1 mapping threads finished mapping in 0.000166s
+[00.006] [INFO]	Processed 1 read records. Rate: 1000 reads/second
+[00.006] [INFO]	Finished writing to output file: benchmark/controlled/B_m1_b0_z0_e1/manual.sam
+[00.006] [INFO]	Average no. unique matches per read: 17
+[00.006] [INFO]	Total no. matches: 17
+[00.006] [INFO]	Mapped reads: 1
+[00.006] [INFO]	Number of reads: 1
+[00.006] [INFO]	Percentage reads mapped: 100%
+[00.006] [INFO]	Bye...
+

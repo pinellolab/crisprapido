@@ -14,7 +14,18 @@ CONTROLLED_SAM_DIR="${CONTROLLED_SAM_DIR:-${REPO_ROOT}/../results}"
 
 GUIDE="GAGTCCGAGCAGAAGAAGAA"
 PAM="GG"
+MIN_MATCH_FRACTION="0.75"
+THREADS="1"
 CRISPRAPIDO_BIN="${REPO_ROOT}/target/release/crisprapido"
+
+CONFIGS=(
+  "A	0	0	0"
+  "B	1	0	0"
+  "C	0	1	1"
+  "D	0	1	2"
+  "E	1	1	2"
+  "F	2	1	2"
+)
 
 if [[ ! -x "${CRISPRAPIDO_BIN}" ]]; then
   echo "Missing executable: ${CRISPRAPIDO_BIN}" >&2
@@ -46,11 +57,12 @@ fi
 
 mkdir -p "${OUT_DIR}"
 SUMMARY="${OUT_DIR}/summary.tsv"
-printf 'k\tmanual_records\tautomatic_records\tpaf_byte_identical\tmanual_exit\tautomatic_exit\tmanual_candidates\tautomatic_candidates\tstderr_diff\n' > "${SUMMARY}"
+printf 'config	m	b	z	f	candidate_e	manual_candidates	automatic_candidates	manual_records	automatic_records	manual_exit	automatic_exit	paf_byte_identical	stderr_diff
+' > "${SUMMARY}"
 
 failed=false
 
-count_manual_candidates() {
+count_mapped_candidates() {
   local sam="$1"
   perl -F'\t' -lane 'next if /^@/ || /^\s*$/; next if @F < 11; $flag=$F[1]+0; $c++ if (($flag & 4) == 0); END { print $c+0 }' "${sam}"
 }
@@ -71,19 +83,66 @@ run_crisprapido() {
   return "${status}"
 }
 
-for k in 0 1 2 3 4; do
-  k_dir="${OUT_DIR}/k${k}"
-  mkdir -p "${k_dir}"
+run_columba_manual_generation() {
+  local query_fasta="$1"
+  local candidate_e="$2"
+  local sam_path="$3"
+  local stdout_path="$4"
+  local stderr_path="$5"
 
-  manual_paf="${k_dir}/manual.paf"
-  manual_stderr="${k_dir}/manual.stderr.txt"
-  automatic_paf="${k_dir}/automatic.paf"
-  automatic_stderr="${k_dir}/automatic.stderr.txt"
-  manual_sam="${CONTROLLED_SAM_DIR}/controlled_k${k}.sam"
+  set +e
+  env \
+    -u RUSTFLAGS \
+    -u LIBRARY_PATH \
+    -u LD_LIBRARY_PATH \
+    "${COLUMBA_BIN}" \
+      -r "${COLUMBA_INDEX}" \
+      -f "${query_fasta}" \
+      -a all \
+      -m edit \
+      -e "${candidate_e}" \
+      -t "${THREADS}" \
+      -o "${sam_path}" > "${stdout_path}" 2> "${stderr_path}"
+  local status=$?
+  set -e
+  return "${status}"
+}
 
-  if [[ ! -f "${manual_sam}" ]]; then
-    echo "Missing controlled SAM for k=${k}: ${manual_sam}" >&2
-    exit 1
+for config in "${CONFIGS[@]}"; do
+  IFS=$'\t' read -r label max_mismatches max_bulges max_bulge_size <<< "${config}"
+  candidate_e=$((max_mismatches + max_bulges * max_bulge_size))
+  config_id="${label}_m${max_mismatches}_b${max_bulges}_z${max_bulge_size}_e${candidate_e}"
+  config_dir="${OUT_DIR}/${config_id}"
+  mkdir -p "${config_dir}"
+
+  query_fasta="${config_dir}/guide.fa"
+  manual_sam="${config_dir}/manual.sam"
+  columba_stdout="${config_dir}/manual_columba.stdout.txt"
+  columba_stderr="${config_dir}/manual_columba.stderr.txt"
+  manual_paf="${config_dir}/manual.paf"
+  manual_stderr="${config_dir}/manual.stderr.txt"
+  automatic_paf="${config_dir}/automatic.paf"
+  automatic_stderr="${config_dir}/automatic.stderr.txt"
+
+  printf '>guide\n%s\n' "${GUIDE}" > "${query_fasta}"
+
+  if run_columba_manual_generation \
+    "${query_fasta}" \
+    "${candidate_e}" \
+    "${manual_sam}" \
+    "${columba_stdout}" \
+    "${columba_stderr}"
+  then
+    columba_exit=0
+  else
+    columba_exit=$?
+    failed=true
+  fi
+
+  if [[ "${columba_exit}" -eq 0 ]]; then
+    manual_candidates="$(count_mapped_candidates "${manual_sam}")"
+  else
+    manual_candidates="not_observed"
   fi
 
   if run_crisprapido \
@@ -92,7 +151,11 @@ for k in 0 1 2 3 4; do
     -r "${CONTROLLED_REFERENCE}" \
     -g "${GUIDE}" \
     -p "${PAM}" \
-    -m "${k}" \
+    -m "${max_mismatches}" \
+    -b "${max_bulges}" \
+    -z "${max_bulge_size}" \
+    -f "${MIN_MATCH_FRACTION}" \
+    -t "${THREADS}" \
     --columba-sam "${manual_sam}"
   then
     manual_exit=0
@@ -106,7 +169,11 @@ for k in 0 1 2 3 4; do
     -r "${CONTROLLED_REFERENCE}" \
     -g "${GUIDE}" \
     -p "${PAM}" \
-    -m "${k}" \
+    -m "${max_mismatches}" \
+    -b "${max_bulges}" \
+    -z "${max_bulge_size}" \
+    -f "${MIN_MATCH_FRACTION}" \
+    -t "${THREADS}" \
     --columba-bin "${COLUMBA_BIN}" \
     --columba-index "${COLUMBA_INDEX}"
   then
@@ -117,7 +184,6 @@ for k in 0 1 2 3 4; do
 
   manual_records="$(wc -l < "${manual_paf}")"
   automatic_records="$(wc -l < "${automatic_paf}")"
-  manual_candidates="$(count_manual_candidates "${manual_sam}")"
   automatic_candidates="not_observed"
 
   if cmp -s "${manual_paf}" "${automatic_paf}"; then
@@ -137,15 +203,20 @@ for k in 0 1 2 3 4; do
     failed=true
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "${k}" \
-    "${manual_records}" \
-    "${automatic_records}" \
-    "${paf_byte_identical}" \
-    "${manual_exit}" \
-    "${automatic_exit}" \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "${label}" \
+    "${max_mismatches}" \
+    "${max_bulges}" \
+    "${max_bulge_size}" \
+    "${MIN_MATCH_FRACTION}" \
+    "${candidate_e}" \
     "${manual_candidates}" \
     "${automatic_candidates}" \
+    "${manual_records}" \
+    "${automatic_records}" \
+    "${manual_exit}" \
+    "${automatic_exit}" \
+    "${paf_byte_identical}" \
     "${stderr_diff}" >> "${SUMMARY}"
 done
 

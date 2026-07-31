@@ -1,0 +1,5 @@
+Warning: skipping Columba candidate 'guide' on 'one_substitution:11' because WFA2 verification failed
+Warning: skipping Columba candidate 'guide' on 'two_substitutions:11' because WFA2 verification failed
+Warning: skipping Columba candidate 'guide' on 'substitution_plus_insertion:11' because WFA2 verification failed
+Warning: skipping Columba candidate 'guide' on 'substitution_plus_deletion:11' because WFA2 verification failed
+Warning: unable to extract adjacent PAM for near_end:10..30 on strand +
