@@ -1,0 +1,5 @@
+mode	measured_runs	wall_seconds	median_wall_seconds	min_wall_seconds	max_wall_seconds	peak_rss_kib	median_peak_rss_kib	total_paf_records	deterministic_stdout
+baseline	3	670.746058,664.124025,663.699258	664.124025	663.699258	670.746058	124312,124216,124276	124276	310,310,310	true
+columba	3	9.244436,8.691813,9.099324	9.099324	8.691813	9.244436	290520,290436,290416	290436	3095,3095,3095	true
+speedup_baseline_median_over_columba	72.986084
+memory_ratio_columba_over_baseline	2.337024
