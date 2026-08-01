@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -11,6 +11,18 @@ use lib_wfa2::affine_wavefront::{AffineWavefronts, AlignmentSpan};
 use crate::columba::{cigar_reference_span, ColumbaCandidate};
 use crate::hit::Hit;
 use crate::{reverse_complement, Args};
+
+#[derive(Default)]
+struct ColumbaVerificationStats {
+    original_candidates: usize,
+    primary_accepted: usize,
+    primary_rejected: usize,
+    expansion_triggers: usize,
+    raw_alternatives_generated: usize,
+    unique_alternatives_verified: usize,
+    fallback_hits_accepted: usize,
+    duplicates_removed: usize,
+}
 
 #[cfg(test)]
 #[derive(Debug, PartialEq, Eq)]
@@ -275,13 +287,35 @@ pub(crate) fn verify_columba_candidates(
     guide_fwd: &Arc<Vec<u8>>,
     args: &Args,
 ) -> Vec<Hit> {
+    verify_columba_candidates_impl(candidates, references, guide_fwd, args).0
+}
+
+#[cfg(test)]
+fn verify_columba_candidates_with_stats(
+    candidates: &[ColumbaCandidate],
+    references: &[(String, Vec<u8>)],
+    guide_fwd: &Arc<Vec<u8>>,
+    args: &Args,
+) -> (Vec<Hit>, ColumbaVerificationStats) {
+    verify_columba_candidates_impl(candidates, references, guide_fwd, args)
+}
+
+fn verify_columba_candidates_impl(
+    candidates: &[ColumbaCandidate],
+    references: &[(String, Vec<u8>)],
+    guide_fwd: &Arc<Vec<u8>>,
+    args: &Args,
+) -> (Vec<Hit>, ColumbaVerificationStats) {
     let reference_by_name: HashMap<&str, &(String, Vec<u8>)> = references
         .iter()
         .map(|record| (record.0.as_str(), record))
         .collect();
     let mut hits = Vec::new();
+    let mut seen_hits = HashSet::new();
+    let mut stats = ColumbaVerificationStats::default();
 
     for candidate in candidates {
+        stats.original_candidates += 1;
         let _candidate_metadata = (candidate.edit_distance, candidate.alignment_score);
         let Some((record_id, seq)) = reference_by_name.get(candidate.reference_name.as_str())
         else {
@@ -333,42 +367,53 @@ pub(crate) fn verify_columba_candidates(
             continue;
         }
 
-        let candidate_seq = &seq[candidate.reference_start..candidate_end];
-        let normalized_candidate_seq = uppercase_ascii_sequence(candidate_seq);
-        let reverse_candidate_seq;
-        let (guide, strand, alignment_span): (&Arc<Vec<u8>>, char, &[u8]) = if candidate.reverse {
-            reverse_candidate_seq = reverse_complement(&normalized_candidate_seq);
-            (guide_fwd, '-', &reverse_candidate_seq)
-        } else {
-            (guide_fwd, '+', &normalized_candidate_seq)
-        };
         let mut aligner = AffineWavefronts::with_penalties(0, 3, 5, 1);
+        if let Some(hit) = verify_columba_interval(
+            &mut aligner,
+            record_id,
+            seq,
+            candidate.reference_start,
+            candidate_end,
+            candidate.reverse,
+            guide_fwd,
+            args,
+        ) {
+            stats.primary_accepted += 1;
+            push_unique_hit(hit, &mut hits, &mut seen_hits, &mut stats);
+            continue;
+        }
 
-        if let Some((score, cigar, _mismatches, _gaps, _max_gap_size)) =
-            anchored_candidate_alignment(
-                &mut aligner,
-                guide,
-                alignment_span,
-                args.max_mismatches,
-                args.max_bulges,
-                args.max_bulge_size,
-                args.min_match_fraction,
-                args.no_filter,
-            )
-        {
-            hits.push(build_verified_hit(
-                record_id.clone(),
-                seq,
+        stats.primary_rejected += 1;
+        let mut recovered = false;
+        if args.max_bulges > 0 && args.max_bulge_size > 0 {
+            stats.expansion_triggers += 1;
+            let alternatives = fallback_intervals(
                 candidate.reference_start,
-                strand,
-                score,
-                cigar,
-                Arc::clone(guide),
-                alignment_span,
-                0,
-                args,
-            ));
-        } else {
+                candidate_end,
+                seq.len(),
+                guide_fwd.len(),
+                args.max_bulge_size,
+                &mut stats,
+            );
+            for (start, end) in alternatives {
+                if let Some(hit) = verify_columba_interval(
+                    &mut aligner,
+                    record_id,
+                    seq,
+                    start,
+                    end,
+                    candidate.reverse,
+                    guide_fwd,
+                    args,
+                ) {
+                    stats.fallback_hits_accepted += 1;
+                    push_unique_hit(hit, &mut hits, &mut seen_hits, &mut stats);
+                    recovered = true;
+                }
+            }
+        }
+
+        if !recovered {
             eprintln!(
                 "Warning: skipping Columba candidate '{}' on '{}:{}' because WFA2 verification failed",
                 candidate.query_name,
@@ -378,7 +423,113 @@ pub(crate) fn verify_columba_candidates(
         }
     }
 
-    hits
+    (hits, stats)
+}
+
+fn push_unique_hit(
+    hit: Hit,
+    hits: &mut Vec<Hit>,
+    seen_hits: &mut HashSet<(String, char, usize, usize, String)>,
+    stats: &mut ColumbaVerificationStats,
+) {
+    let key = (
+        hit.ref_id.clone(),
+        hit.strand,
+        hit.pos,
+        hit.end_pos(),
+        hit.cigar.clone(),
+    );
+    if seen_hits.insert(key) {
+        hits.push(hit);
+    } else {
+        stats.duplicates_removed += 1;
+    }
+}
+
+fn verify_columba_interval(
+    aligner: &mut AffineWavefronts,
+    record_id: &str,
+    seq: &[u8],
+    reference_start: usize,
+    reference_end: usize,
+    reverse: bool,
+    guide_fwd: &Arc<Vec<u8>>,
+    args: &Args,
+) -> Option<Hit> {
+    let candidate_seq = seq.get(reference_start..reference_end)?;
+    let normalized_candidate_seq = uppercase_ascii_sequence(candidate_seq);
+    let reverse_candidate_seq;
+    let (strand, alignment_span): (char, &[u8]) = if reverse {
+        reverse_candidate_seq = reverse_complement(&normalized_candidate_seq);
+        ('-', &reverse_candidate_seq)
+    } else {
+        ('+', &normalized_candidate_seq)
+    };
+
+    let (score, cigar, _mismatches, _gaps, _max_gap_size) = anchored_candidate_alignment(
+        aligner,
+        guide_fwd,
+        alignment_span,
+        args.max_mismatches,
+        args.max_bulges,
+        args.max_bulge_size,
+        args.min_match_fraction,
+        args.no_filter,
+    )?;
+
+    Some(build_verified_hit(
+        record_id.to_string(),
+        seq,
+        reference_start,
+        strand,
+        score,
+        cigar,
+        Arc::clone(guide_fwd),
+        alignment_span,
+        0,
+        args,
+    ))
+}
+
+fn fallback_intervals(
+    original_start: usize,
+    original_end: usize,
+    contig_len: usize,
+    guide_len: usize,
+    max_bulge_size: u32,
+    stats: &mut ColumbaVerificationStats,
+) -> Vec<(usize, usize)> {
+    let z = max_bulge_size as usize;
+    let min_span = guide_len.saturating_sub(z).max(1);
+    let max_span = guide_len.saturating_add(z);
+    let mut seen = HashSet::new();
+    let mut intervals = Vec::new();
+
+    for shift in -(z as isize)..=(z as isize) {
+        let start = if shift.is_negative() {
+            original_start.saturating_sub(shift.unsigned_abs())
+        } else {
+            original_start.saturating_add(shift as usize)
+        };
+        if start >= contig_len {
+            continue;
+        }
+        for span in min_span..=max_span {
+            stats.raw_alternatives_generated += 1;
+            let Some(end) = start.checked_add(span) else {
+                continue;
+            };
+            if end > contig_len || (start == original_start && end == original_end) {
+                continue;
+            }
+            if seen.insert((start, end)) {
+                intervals.push((start, end));
+            }
+        }
+    }
+
+    stats.unique_alternatives_verified += intervals.len();
+    intervals
 }
 
 fn validation_passes(
@@ -948,6 +1099,216 @@ mod tests {
             cfd_for_hit(&hit),
             cfd_score::get_cfd_score(&hit.guide, &hit.target_seq, &hit.cigar, "AG")
         );
+    }
+
+    fn verify_candidates_with_stats_for_test(
+        guide: &str,
+        max_mismatches: u32,
+        max_bulges: u32,
+        max_bulge_size: u32,
+        candidates: Vec<ColumbaCandidate>,
+        seq: Vec<u8>,
+    ) -> (Vec<Hit>, ColumbaVerificationStats) {
+        let mut args = columba_test_args();
+        args.guide = guide.to_string();
+        args.max_mismatches = max_mismatches;
+        args.max_bulges = max_bulges;
+        args.max_bulge_size = max_bulge_size;
+        args.min_match_fraction = 0.75;
+        let guide_fwd = Arc::new(args.guide.as_bytes().to_vec());
+        verify_columba_candidates_with_stats(
+            &candidates,
+            &[("chr1".to_string(), seq)],
+            &guide_fwd,
+            &args,
+        )
+    }
+
+    #[test]
+    fn test_fallback_recovers_suppressed_terminal_two_base_guide_insertion() {
+        let guide = "AACGGCCTCCCAAAGTGCTG";
+        let mut seq = b"CT".to_vec();
+        seq.extend_from_slice(&guide.as_bytes()[2..]);
+        seq.extend_from_slice(b"GG");
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t1\t60\t20M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert_eq!(stats.original_candidates, 1);
+        assert_eq!(stats.primary_accepted, 0);
+        assert_eq!(stats.primary_rejected, 1);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert!(stats.unique_alternatives_verified <= 24);
+        assert_eq!(stats.fallback_hits_accepted, 1);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].pos, 2);
+        assert_eq!(hits[0].end_pos(), 20);
+        assert_eq!(hits[0].pam_seq, Some("GG".to_string()));
+        assert_eq!(
+            cigar_test_counts(&hits[0].cigar, guide.as_bytes()),
+            (18, 0, 1, 2)
+        );
+        assert!(hits[0].cigar.starts_with("II"));
+    }
+
+    #[test]
+    fn test_fallback_recovers_suppressed_near_terminal_two_base_insertion() {
+        let guide = "CGCGGCCTCCCAAAGTGCTG";
+        let target = [
+            guide.as_bytes()[0..2].to_vec(),
+            guide.as_bytes()[4..].to_vec(),
+        ]
+        .concat();
+        let mut seq = b"CT".to_vec();
+        seq.extend_from_slice(&target);
+        seq.extend_from_slice(b"GG");
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t1\t60\t20M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert_eq!(stats.primary_rejected, 1);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].pos, 2);
+        assert_eq!(hits[0].end_pos(), 20);
+        assert_eq!(hits[0].pam_seq, Some("GG".to_string()));
+        assert_eq!(
+            cigar_test_counts(&hits[0].cigar, guide.as_bytes()),
+            (18, 0, 1, 2)
+        );
+        assert!(hits[0].cigar.starts_with("MMII"));
+    }
+
+    #[test]
+    fn test_fallback_recovers_reverse_suppressed_terminal_insertion() {
+        let guide = "AACGGCCTCCCAAAGTGCTG";
+        let mut oriented = b"CT".to_vec();
+        oriented.extend_from_slice(&guide.as_bytes()[2..]);
+        let mut seq = b"CC".to_vec();
+        seq.extend_from_slice(&reverse_complement(&oriented));
+        seq.extend_from_slice(b"AAAA");
+        let candidate =
+            parse_candidate("guide\t16\tchr1\t3\t60\t20M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert_eq!(stats.primary_rejected, 1);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].strand, '-');
+        assert_eq!(hits[0].pos, 2);
+        assert_eq!(hits[0].end_pos(), 20);
+        assert_eq!(hits[0].pam_seq, Some("GG".to_string()));
+        assert_eq!(
+            cigar_test_counts(&hits[0].cigar, guide.as_bytes()),
+            (18, 0, 1, 2)
+        );
+    }
+
+    #[test]
+    fn test_fallback_not_triggered_when_primary_candidate_passes() {
+        let guide = "AACGGCCTCCCAAAGTGCTG";
+        let mut seq = guide.as_bytes().to_vec();
+        seq.extend_from_slice(b"GG");
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t1\t60\t20M\t*\t0\t0\t*\t*\tAS:i:0\tNM:i:0");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert_eq!(hits.len(), 1);
+        assert_eq!(stats.primary_accepted, 1);
+        assert_eq!(stats.primary_rejected, 0);
+        assert_eq!(stats.expansion_triggers, 0);
+        assert_eq!(stats.unique_alternatives_verified, 0);
+        assert_eq!(stats.fallback_hits_accepted, 0);
+    }
+
+    #[test]
+    fn test_fallback_not_triggered_when_bulges_are_disabled() {
+        let guide = "AACGGCCTCCCAAAGTGCTG";
+        let mut seq = b"CT".to_vec();
+        seq.extend_from_slice(&guide.as_bytes()[2..]);
+        seq.extend_from_slice(b"GG");
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t1\t60\t20M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 0, 2, vec![candidate], seq);
+
+        assert!(hits.is_empty());
+        assert_eq!(stats.primary_rejected, 1);
+        assert_eq!(stats.expansion_triggers, 0);
+        assert_eq!(stats.unique_alternatives_verified, 0);
+    }
+
+    #[test]
+    fn test_fallback_rejects_invalid_expanded_alternatives() {
+        let guide = "CGCGGCCTCCCAAAGTGCTG";
+        let seq = b"CTAAAAAAAAAAAAAAAAAAGG".to_vec();
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t1\t60\t20M\t*\t0\t0\t*\t*\tAS:i:2\tNM:i:2");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert!(hits.is_empty());
+        assert_eq!(stats.primary_rejected, 1);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert!(stats.unique_alternatives_verified > 0);
+        assert_eq!(stats.fallback_hits_accepted, 0);
+    }
+
+    #[test]
+    fn test_fallback_boundary_candidates_do_not_panic() {
+        let guide = "CGCGGCCTCCCAAAGTGCTG";
+        let seq = b"CTCGGCCTCCCAAAGTGCTGGG".to_vec();
+        let start_candidate =
+            parse_candidate("guide\t0\tchr1\t1\t60\t20M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+        let end_candidate =
+            parse_candidate("guide\t0\tchr1\t5\t60\t20M\t*\t0\t0\t*\t*\tAS:i:2\tNM:i:2");
+
+        let (hits, stats) = verify_candidates_with_stats_for_test(
+            guide,
+            0,
+            1,
+            2,
+            vec![start_candidate, end_candidate],
+            seq,
+        );
+
+        assert!(stats.expansion_triggers >= 1);
+        assert!(hits.iter().all(|hit| hit.end_pos() <= hit.target_len));
+    }
+
+    #[test]
+    fn test_fallback_deduplicates_same_biological_hit() {
+        let guide = "AACGGCCTCCCAAAGTGCTG";
+        let mut seq = b"CT".to_vec();
+        seq.extend_from_slice(&guide.as_bytes()[2..]);
+        seq.extend_from_slice(b"GG");
+        let candidate_one =
+            parse_candidate("guide\t0\tchr1\t1\t60\t20M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+        let candidate_two =
+            parse_candidate("guide\t256\tchr1\t1\t60\t20M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
+
+        let (hits, stats) = verify_candidates_with_stats_for_test(
+            guide,
+            0,
+            1,
+            2,
+            vec![candidate_one, candidate_two],
+            seq,
+        );
+
+        assert_eq!(hits.len(), 1);
+        assert_eq!(stats.fallback_hits_accepted, 2);
+        assert_eq!(stats.duplicates_removed, 1);
     }
 
     #[test]
