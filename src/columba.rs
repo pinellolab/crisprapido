@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
@@ -237,6 +238,51 @@ pub(crate) struct ColumbaCandidate {
     pub(crate) cigar: String,
     pub(crate) edit_distance: usize,
     pub(crate) alignment_score: i32,
+}
+
+pub(crate) fn deduplicate_columba_candidates(
+    candidates: Vec<ColumbaCandidate>,
+) -> Vec<ColumbaCandidate> {
+    let mut seen = HashSet::new();
+    let mut deduplicated = Vec::new();
+
+    for candidate in candidates {
+        let key = (
+            candidate.query_name.clone(),
+            candidate.reference_name.clone(),
+            candidate.reference_start,
+            candidate.reverse,
+            candidate.cigar.clone(),
+        );
+        if seen.insert(key) {
+            deduplicated.push(candidate);
+        }
+    }
+
+    deduplicated
+}
+
+pub(crate) fn run_columba_candidate_generation(
+    config: &ColumbaRunConfig<'_>,
+) -> Result<Vec<ColumbaCandidate>, String> {
+    let columba_output = run_columba(config)?;
+    let mut candidates = parse_columba_sam_file(&columba_output.sam_path)
+        .map_err(|e| format!("Failed to parse generated Columba SAM file: {}", e))?;
+
+    if config.candidate_edit_distance > 0 {
+        let exact_config = ColumbaRunConfig {
+            candidate_edit_distance: 0,
+            ..*config
+        };
+        let exact_output = run_columba(&exact_config)?;
+        candidates.extend(
+            parse_columba_sam_file(&exact_output.sam_path)
+                .map_err(|e| format!("Failed to parse generated exact Columba SAM file: {}", e))?,
+        );
+        candidates = deduplicate_columba_candidates(candidates);
+    }
+
+    Ok(candidates)
 }
 
 pub(crate) fn cigar_reference_span(cigar: &str) -> Result<usize, String> {
@@ -613,21 +659,49 @@ mod tests {
         write_dummy_index(&index_prefix);
         write_mock_executable(
             &bin,
-            "#!/bin/sh\nout=\"\"\nseen_e=0\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = \"-e\" ]; then\n    shift\n    if [ \"$1\" != \"2\" ]; then\n      echo unexpected -e $1 >&2\n      exit 9\n    fi\n    seen_e=1\n  elif [ \"$1\" = \"-o\" ]; then\n    shift\n    out=\"$1\"\n  fi\n  shift\ndone\nif [ \"$seen_e\" != 1 ]; then\n  echo missing -e >&2\n  exit 10\nfi\nprintf '@HD\\tVN:1.6\\n' > \"$out\"\nprintf 'guide\\t0\\tchr1\\t11\\t60\\t20M\\t*\\t0\\t0\\t*\\t*\\tAS:i:0\\tNM:i:0\\n' >> \"$out\"\nexit 0\n",
+            r#"#!/bin/sh
+out=""
+e=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-e" ]; then
+    shift
+    e="$1"
+  elif [ "$1" = "-o" ]; then
+    shift
+    out="$1"
+  fi
+  shift
+done
+printf '@HD	VN:1.6
+' > "$out"
+if [ "$e" = "0" ]; then
+  printf 'guide	0	chr1	101	60	20M	*	0	0	*	*	AS:i:0	NM:i:0
+' >> "$out"
+else
+  printf 'guide	0	chr1	99	60	20M	*	0	0	*	*	AS:i:1	NM:i:1
+' >> "$out"
+fi
+exit 0
+"#,
         );
 
-        let output = run_columba(&ColumbaRunConfig {
+        let candidates = run_columba_candidate_generation(&ColumbaRunConfig {
             columba_bin: &bin,
             index_prefix: &index_prefix,
             guide: "GAGTCCGAGCAGAAGAAGAA",
-            candidate_edit_distance: candidate_edit_distance_bound(0, 1, 2),
+            candidate_edit_distance: 2,
             threads: None,
             keep_sam: false,
         })
         .unwrap();
 
-        assert!(output.sam_path.exists());
-        drop(output);
+        assert_eq!(candidates.len(), 2);
+        assert!(candidates
+            .iter()
+            .any(|candidate| candidate.reference_start == 100 && candidate.edit_distance == 0));
+        assert!(candidates
+            .iter()
+            .any(|candidate| candidate.reference_start == 98 && candidate.edit_distance == 1));
         fs::remove_dir_all(dir).unwrap();
     }
 
@@ -710,5 +784,22 @@ mod tests {
         assert!(sam_path.exists());
         fs::remove_dir_all(temp_dir).unwrap();
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn test_deduplicate_columba_candidates_retains_exact_e0_candidate() {
+        let exact = parse_candidate("guide	0	chr1	101	60	20M	*	0	0	*	*	AS:i:0	NM:i:0");
+        let shifted = parse_candidate("guide	0	chr1	99	60	20M	*	0	0	*	*	AS:i:1	NM:i:1");
+        let duplicate_exact = parse_candidate("guide	256	chr1	101	60	20M	*	0	0	*	*	AS:i:0	NM:i:0");
+
+        let candidates = deduplicate_columba_candidates(vec![shifted, exact, duplicate_exact]);
+
+        assert_eq!(candidates.len(), 2);
+        assert!(candidates
+            .iter()
+            .any(|candidate| candidate.reference_start == 100 && candidate.edit_distance == 0));
+        assert!(candidates
+            .iter()
+            .any(|candidate| candidate.reference_start == 98 && candidate.edit_distance == 1));
     }
 }

@@ -3,6 +3,7 @@ use std::fmt::Write;
 
 use crate::cfd_score;
 use crate::hit::Hit;
+use crate::reverse_complement;
 use crate::verification::cigar_operations;
 
 fn convert_to_minimap2_cigar(cigar: &str) -> String {
@@ -35,11 +36,40 @@ fn convert_to_minimap2_cigar(cigar: &str) -> String {
     result
 }
 
-pub(crate) fn report_filtered_hits(hits: Vec<Hit>, _pam: &str) {
-    print!("{}", format_filtered_hits(hits));
+pub(crate) fn report_filtered_hits(hits: Vec<Hit>, pam: &str) {
+    print!("{}", format_filtered_hits(hits, pam));
 }
 
-fn format_filtered_hits(hits: Vec<Hit>) -> String {
+fn pam_matches_requested(hit: &Hit, requested_pam: &str) -> bool {
+    let Some(pam) = hit.pam_seq.as_deref() else {
+        return false;
+    };
+    pam.eq_ignore_ascii_case(requested_pam)
+        || (hit.strand == '-'
+            && pam.eq_ignore_ascii_case(&String::from_utf8_lossy(&reverse_complement(
+                requested_pam.as_bytes(),
+            ))))
+}
+
+fn preferred_overlap_hit(candidate: &Hit, current: &Hit, requested_pam: &str) -> bool {
+    let candidate_requested_pam = pam_matches_requested(candidate, requested_pam);
+    let current_requested_pam = pam_matches_requested(current, requested_pam);
+
+    if candidate_requested_pam != current_requested_pam {
+        return candidate_requested_pam;
+    }
+
+    if candidate_requested_pam
+        && candidate.pos == current.pos
+        && candidate.end_pos() != current.end_pos()
+    {
+        return candidate.end_pos() < current.end_pos();
+    }
+
+    candidate.quality_score() > current.quality_score()
+}
+
+fn format_filtered_hits(hits: Vec<Hit>, pam: &str) -> String {
     let mut hits_by_group: HashMap<(String, char), Vec<Hit>> = HashMap::new();
     for hit in hits {
         hits_by_group
@@ -65,14 +95,11 @@ fn format_filtered_hits(hits: Vec<Hit>) -> String {
         let mut i = 0;
         while i < group_hits.len() {
             let mut best_idx = i;
-            let mut best_quality = group_hits[i].quality_score();
             let mut j = i + 1;
 
             while j < group_hits.len() && group_hits[j].pos < group_hits[i].end_pos() {
                 if group_hits[j].overlaps_with(&group_hits[i]) {
-                    let quality = group_hits[j].quality_score();
-                    if quality > best_quality {
-                        best_quality = quality;
+                    if preferred_overlap_hit(&group_hits[j], &group_hits[best_idx], pam) {
                         best_idx = j;
                     }
                 }
@@ -331,6 +358,95 @@ mod tests {
             test_hit("chr1", '-', 10),
         ];
 
-        assert_eq!(format_filtered_hits(hits_a), format_filtered_hits(hits_b));
+        assert_eq!(
+            format_filtered_hits(hits_a, "GG"),
+            format_filtered_hits(hits_b, "GG")
+        );
+    }
+
+    #[test]
+    fn test_requested_pam_hit_wins_overlap_over_nonrequested_pam() {
+        cfd_score::init_score_matrices("mismatch_scores.txt", "pam_scores.txt")
+            .expect("Failed to initialize scoring matrices");
+        let guide = Arc::new(b"GAGTCCGAGCAGAAGAAGAA".to_vec());
+        let nonrequested = Hit {
+            ref_id: "chr1".to_string(),
+            pos: 10,
+            strand: '+',
+            score: 0,
+            cigar: "MMMMMMMMMMMMMMMMMMMM".to_string(),
+            guide: Arc::clone(&guide),
+            target_len: 100,
+            max_mismatches: 4,
+            max_bulges: 1,
+            max_bulge_size: 2,
+            cfd_score: None,
+            target_seq: guide.as_ref().clone(),
+            pam_seq: Some("TG".to_string()),
+        };
+        let requested = Hit {
+            ref_id: "chr1".to_string(),
+            pos: 12,
+            strand: '+',
+            score: 7,
+            cigar: "IIMMMMMMMMMMMMMMMMMM".to_string(),
+            guide: Arc::clone(&guide),
+            target_len: 100,
+            max_mismatches: 4,
+            max_bulges: 1,
+            max_bulge_size: 2,
+            cfd_score: None,
+            target_seq: b"--GTCCGAGCAGAAGAAGAA".to_vec(),
+            pam_seq: Some("GG".to_string()),
+        };
+
+        let output = format_filtered_hits(vec![nonrequested, requested], "GG");
+
+        assert_eq!(output.lines().count(), 1);
+        assert!(output.contains("	12	30	"));
+        assert!(output.contains("	cg:Z:2I18="));
+    }
+
+    #[test]
+    fn test_same_start_requested_pam_prefers_shorter_reference_span() {
+        cfd_score::init_score_matrices("mismatch_scores.txt", "pam_scores.txt")
+            .expect("Failed to initialize scoring matrices");
+        let guide = Arc::new(b"GAGTCCGAGCAGAAGAAGAA".to_vec());
+        let longer = Hit {
+            ref_id: "chr1".to_string(),
+            pos: 10,
+            strand: '+',
+            score: 6,
+            cigar: "MMMMDMMMMMMMMMMMMMMMM".to_string(),
+            guide: Arc::clone(&guide),
+            target_len: 100,
+            max_mismatches: 4,
+            max_bulges: 1,
+            max_bulge_size: 2,
+            cfd_score: None,
+            target_seq: guide.as_ref().clone(),
+            pam_seq: Some("GG".to_string()),
+        };
+        let shorter = Hit {
+            ref_id: "chr1".to_string(),
+            pos: 10,
+            strand: '+',
+            score: 7,
+            cigar: "IIMMMMMMMMMMMMMMMMMM".to_string(),
+            guide: Arc::clone(&guide),
+            target_len: 100,
+            max_mismatches: 4,
+            max_bulges: 1,
+            max_bulge_size: 2,
+            cfd_score: None,
+            target_seq: b"--GTCCGAGCAGAAGAAGAA".to_vec(),
+            pam_seq: Some("GG".to_string()),
+        };
+
+        let output = format_filtered_hits(vec![longer, shorter], "GG");
+
+        assert_eq!(output.lines().count(), 1);
+        assert!(output.contains("	10	28	"));
+        assert!(output.contains("	cg:Z:2I18="));
     }
 }

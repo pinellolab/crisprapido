@@ -16,7 +16,8 @@ mod reporting;
 mod verification;
 
 use columba::{
-    candidate_edit_distance_bound, parse_columba_sam_file, run_columba, ColumbaRunConfig,
+    candidate_edit_distance_bound, parse_columba_sam_file, run_columba_candidate_generation,
+    ColumbaRunConfig,
 };
 use hit::Hit;
 use reporting::report_filtered_hits;
@@ -160,24 +161,21 @@ fn main() {
                 eprintln!("--columba-index is required when --columba-bin is supplied");
                 std::process::exit(1);
             });
-            let columba_output = run_columba(&ColumbaRunConfig {
+            let candidate_edit_distance = candidate_edit_distance_bound(
+                args.max_mismatches,
+                args.max_bulges,
+                args.max_bulge_size,
+            );
+            run_columba_candidate_generation(&ColumbaRunConfig {
                 columba_bin,
                 index_prefix: columba_index,
                 guide: &args.guide,
-                candidate_edit_distance: candidate_edit_distance_bound(
-                    args.max_mismatches,
-                    args.max_bulges,
-                    args.max_bulge_size,
-                ),
+                candidate_edit_distance,
                 threads: args.threads,
                 keep_sam: args.keep_columba_sam,
             })
             .unwrap_or_else(|e| {
                 eprintln!("{}", e);
-                std::process::exit(1);
-            });
-            parse_columba_sam_file(&columba_output.sam_path).unwrap_or_else(|e| {
-                eprintln!("Failed to parse generated Columba SAM file: {}", e);
                 std::process::exit(1);
             })
         };

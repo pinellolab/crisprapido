@@ -185,12 +185,12 @@ fn extract_adjacent_pam(
     match strand {
         '+' => {
             let pam = seq.get(protospacer_end..protospacer_end + 2)?;
-            Some(String::from_utf8_lossy(pam).to_string())
+            Some(String::from_utf8_lossy(&uppercase_ascii_sequence(pam)).to_string())
         }
         '-' => {
             let pam_start = protospacer_start.checked_sub(2)?;
-            let pam = seq.get(pam_start..protospacer_start)?;
-            Some(String::from_utf8_lossy(&reverse_complement(pam)).to_string())
+            let pam = uppercase_ascii_sequence(seq.get(pam_start..protospacer_start)?);
+            Some(String::from_utf8_lossy(&reverse_complement(&pam)).to_string())
         }
         _ => None,
     }
@@ -300,6 +300,17 @@ fn verify_columba_candidates_with_stats(
     verify_columba_candidates_impl(candidates, references, guide_fwd, args)
 }
 
+fn hit_matches_requested_pam(hit: &Hit, requested_pam: &str) -> bool {
+    let Some(pam) = hit.pam_seq.as_deref() else {
+        return false;
+    };
+    pam.eq_ignore_ascii_case(requested_pam)
+        || (hit.strand == '-'
+            && pam.eq_ignore_ascii_case(&String::from_utf8_lossy(&reverse_complement(
+                requested_pam.as_bytes(),
+            ))))
+}
+
 fn verify_columba_candidates_impl(
     candidates: &[ColumbaCandidate],
     references: &[(String, Vec<u8>)],
@@ -368,7 +379,7 @@ fn verify_columba_candidates_impl(
         }
 
         let mut aligner = AffineWavefronts::with_penalties(0, 3, 5, 1);
-        if let Some(hit) = verify_columba_interval(
+        let primary_hit = verify_columba_interval(
             &mut aligner,
             record_id,
             seq,
@@ -377,15 +388,27 @@ fn verify_columba_candidates_impl(
             candidate.reverse,
             guide_fwd,
             args,
-        ) {
-            stats.primary_accepted += 1;
-            push_unique_hit(hit, &mut hits, &mut seen_hits, &mut stats);
-            continue;
-        }
-
-        stats.primary_rejected += 1;
+        );
         let mut recovered = false;
-        if args.max_bulges > 0 && args.max_bulge_size > 0 {
+        let should_expand = match primary_hit {
+            Some(hit) => {
+                stats.primary_accepted += 1;
+                let has_pam = hit.pam_seq.is_some();
+                let requested_pam = hit_matches_requested_pam(&hit, &args.pam);
+                let accepted_reference_insertion = requested_pam && hit.cigar.contains('D');
+                push_unique_hit(hit, &mut hits, &mut seen_hits, &mut stats);
+                recovered = true;
+                args.max_bulges > 0
+                    && args.max_bulge_size > 0
+                    && ((has_pam && !requested_pam) || accepted_reference_insertion)
+            }
+            None => {
+                stats.primary_rejected += 1;
+                args.max_bulges > 0 && args.max_bulge_size > 0
+            }
+        };
+
+        if should_expand {
             stats.expansion_triggers += 1;
             let alternatives = fallback_intervals(
                 candidate.reference_start,
@@ -505,7 +528,8 @@ fn fallback_intervals(
     let mut seen = HashSet::new();
     let mut intervals = Vec::new();
 
-    for shift in -(z as isize)..=(z as isize) {
+    let shift_bound = z.saturating_mul(2) as isize;
+    for shift in -shift_bound..=shift_bound {
         let start = if shift.is_negative() {
             original_start.saturating_sub(shift.unsigned_abs())
         } else {
@@ -894,8 +918,9 @@ mod tests {
             parse_candidate("guide_20bp\t0\tchr1\t5\t60\t10M1D10M\t*\t0\t0\t*\t*\tAS:i:1\tNM:i:1");
 
         let hits = verify_test_candidates(vec![candidate], vec![("chr1".to_string(), seq)]);
-        assert_eq!(hits.len(), 1);
-        assert!(hits[0].cigar.contains('I') || hits[0].cigar.contains('D'));
+        assert!(hits
+            .iter()
+            .any(|hit| hit.cigar.contains('I') || hit.cigar.contains('D')));
     }
 
     #[test]
@@ -1140,7 +1165,7 @@ mod tests {
         assert_eq!(stats.primary_accepted, 0);
         assert_eq!(stats.primary_rejected, 1);
         assert_eq!(stats.expansion_triggers, 1);
-        assert!(stats.unique_alternatives_verified <= 24);
+        assert!(stats.unique_alternatives_verified <= 44);
         assert_eq!(stats.fallback_hits_accepted, 1);
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].pos, 2);
@@ -1227,6 +1252,125 @@ mod tests {
         assert_eq!(stats.expansion_triggers, 0);
         assert_eq!(stats.unique_alternatives_verified, 0);
         assert_eq!(stats.fallback_hits_accepted, 0);
+    }
+
+    #[test]
+    fn test_fallback_triggers_when_primary_passes_with_nonrequested_pam() {
+        let guide = "GACCATCCTGGCTAACACGG";
+        let mut seq = guide.as_bytes().to_vec();
+        seq.extend_from_slice(b"TG");
+        let candidate = parse_candidate("guide	0	chr1	1	60	20M	*	0	0	*	*	AS:i:0	NM:i:0");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert_eq!(stats.primary_accepted, 1);
+        assert_eq!(stats.primary_rejected, 0);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert!(hits.iter().any(|hit| {
+            hit.pos == 0 && hit.end_pos() == 18 && hit.pam_seq.as_deref() == Some("GG")
+        }));
+    }
+
+    #[test]
+    fn test_fallback_recovers_start_shift_four_when_z_is_two() {
+        let guide = "AGGTTTCACCATGTTCGCCA";
+        let mut target = guide.as_bytes()[..16].to_vec();
+        target.extend_from_slice(b"GA");
+        target.extend_from_slice(&guide.as_bytes()[16..]);
+        let mut seq = target;
+        seq.extend_from_slice(b"GGTT");
+        let candidate = parse_candidate("guide	0	chr1	5	60	20M	*	0	0	*	*	AS:i:2	NM:i:2");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert_eq!(stats.expansion_triggers, 1);
+        assert!(stats.unique_alternatives_verified > 24);
+        let recovered = hits
+            .iter()
+            .find(|hit| hit.pos == 0 && hit.end_pos() == 22 && hit.pam_seq.as_deref() == Some("GG"))
+            .expect("widened fallback should recover the shifted deletion locus");
+        assert_eq!(
+            cigar_test_counts(&recovered.cigar, guide.as_bytes()),
+            (20, 0, 1, 2)
+        );
+        assert!(recovered.cigar.contains("DD"));
+    }
+
+    #[test]
+    fn test_fallback_triggers_for_requested_pam_reference_insertion_primary() {
+        let guide = "GACCATCCTGGCTAACACGG";
+        let mut seq = guide.as_bytes().to_vec();
+        seq.extend_from_slice(b"TGGG");
+        let candidate = parse_candidate("guide	0	chr1	1	60	22M	*	0	0	*	*	AS:i:2	NM:i:2");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert_eq!(stats.primary_accepted, 1);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert!(hits.iter().any(|hit| {
+            hit.pos == 0 && hit.end_pos() == 18 && hit.pam_seq.as_deref() == Some("GG")
+        }));
+    }
+
+    #[test]
+    fn test_fallback_triggers_for_reverse_requested_pam_reference_insertion_primary() {
+        let guide = "GACCATCCTGGCTAACACGG";
+        let mut oriented = guide.as_bytes()[0..2].to_vec();
+        oriented.extend_from_slice(b"TT");
+        oriented.extend_from_slice(&guide.as_bytes()[2..]);
+        let mut seq = b"CC".to_vec();
+        seq.extend_from_slice(&reverse_complement(&oriented));
+        seq.extend_from_slice(b"AAAA");
+        let candidate = parse_candidate("guide	16	chr1	3	60	22M	*	0	0	*	*	AS:i:0	NM:i:0");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert_eq!(stats.primary_accepted, 1);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert!(hits.iter().any(|hit| {
+            hit.strand == '-'
+                && hit.pos == 2
+                && hit.end_pos() == 20
+                && hit.pam_seq.as_deref() == Some("GG")
+                && hit.cigar.starts_with("II")
+        }));
+    }
+
+    #[test]
+    fn test_fallback_recovers_real_reverse_same_start_shorter_span() {
+        let guide = "ATCTTTGCACTGATCTCCCA";
+        let seq = b"ACATCAccTGGGAGATCAGTGCAAAGGTATGTCACAAA".to_vec();
+        let candidate = parse_candidate("guide	272	chr1	9	60	20M	*	0	0	*	*	AS:i:1	NM:i:1");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 0, 1, 2, vec![candidate], seq);
+
+        assert_eq!(stats.primary_accepted, 0);
+        assert_eq!(stats.primary_rejected, 1);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert!(
+            hits.iter().any(|hit| {
+                hit.strand == '-'
+                    && hit.pos == 8
+                    && hit.end_pos() == 26
+                    && hit.pam_seq.as_deref() == Some("GG")
+                    && hit.cigar.starts_with("II")
+            }),
+            "fallback hits: {:?}",
+            hits.iter()
+                .map(|hit| (
+                    hit.pos,
+                    hit.end_pos(),
+                    hit.strand,
+                    hit.cigar.clone(),
+                    hit.pam_seq.clone()
+                ))
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]
@@ -1365,12 +1509,13 @@ mod tests {
             vec![("chr1".to_string(), seq)],
         );
 
-        assert_eq!(hits.len(), 1);
-        assert_eq!(hits[0].pos, start);
-        assert_eq!(hits[0].strand, '-');
-        assert_eq!(hits[0].cigar, "IMMMMMMMMMMMMMMMMMMM");
+        let anchored = hits
+            .iter()
+            .find(|hit| hit.pos == start && hit.strand == '-')
+            .expect("anchored reverse candidate should remain present");
+        assert_eq!(anchored.cigar, "IMMMMMMMMMMMMMMMMMMM");
         assert_eq!(
-            cigar_test_counts(&hits[0].cigar, guide.as_bytes()),
+            cigar_test_counts(&anchored.cigar, guide.as_bytes()),
             (19, 0, 1, 1)
         );
     }
@@ -1447,9 +1592,11 @@ mod tests {
             vec![("chr1".to_string(), seq)],
         );
 
-        assert_eq!(hits.len(), 1);
-        assert_eq!(hits[0].pos, 5);
-        assert_eq!(hits[0].cigar, "MMMMMMMMMMMMMMMMMMMM");
+        let anchored = hits
+            .iter()
+            .find(|hit| hit.pos == 5 && hit.cigar == "MMMMMMMMMMMMMMMMMMMM")
+            .expect("reported exact candidate should remain anchored at the SAM coordinate");
+        assert_eq!(anchored.pos, 5);
     }
 
     #[test]
