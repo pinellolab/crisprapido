@@ -1,0 +1,5 @@
+job_kind	time_limit	cpus	memory	array_concurrency	notes
+correctness_baseline	10:00:00	1	1G	4	Baseline one pass: about 4.8 h of summed compute. One correctness baseline plus one measured baseline: about 9.5 h summed compute. Three Columba measured passes plus correctness are expected to be under one hour summed compute, subject to repetitive guides and fallback expansion.
+correctness_columba	02:00:00	1	2G	4	Shorter than baseline; includes Columba execution, WFA2 verification, fallback expansion, and output writing.
+measured_baseline	10:00:00	1	1G	4	One measured baseline pass only for this expansion; do not report a baseline median.
+measured_columba	02:00:00	1	2G	4	Run three measured Columba passes.

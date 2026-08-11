@@ -1,0 +1,15 @@
+# Dry-run submission commands for chr22_500_guides
+# Set site-specific Slurm options as needed, for example:
+#   export SBATCH_PARTITION=<partition>
+#   export SBATCH_ACCOUNT=<account>
+# The sbatch scripts intentionally avoid hard-coded account/partition values.
+
+# Correctness phase
+RUN_ID=chr22_500_guides_correctness_$(date -u +%Y%m%dT%H%M%SZ) sbatch benchmark/performance/chr22_500_guides/slurm_correctness_baseline.sbatch
+RUN_ID=chr22_500_guides_correctness_$(date -u +%Y%m%dT%H%M%SZ) sbatch benchmark/performance/chr22_500_guides/slurm_correctness_columba.sbatch
+
+# Timing phase: one measured baseline pass, three measured Columba passes.
+RUN_ID=chr22_500_guides_timing_$(date -u +%Y%m%dT%H%M%SZ) ITERATION=measured_1 sbatch benchmark/performance/chr22_500_guides/slurm_measured_baseline.sbatch
+RUN_ID=chr22_500_guides_timing_$(date -u +%Y%m%dT%H%M%SZ) ITERATION=measured_1 sbatch benchmark/performance/chr22_500_guides/slurm_measured_columba.sbatch
+RUN_ID=chr22_500_guides_timing_$(date -u +%Y%m%dT%H%M%SZ) ITERATION=measured_2 sbatch benchmark/performance/chr22_500_guides/slurm_measured_columba.sbatch
+RUN_ID=chr22_500_guides_timing_$(date -u +%Y%m%dT%H%M%SZ) ITERATION=measured_3 sbatch benchmark/performance/chr22_500_guides/slurm_measured_columba.sbatch
