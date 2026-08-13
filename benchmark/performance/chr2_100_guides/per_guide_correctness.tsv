@@ -1,0 +1,101 @@
+guide_id	baseline_exit	columba_exit	baseline_raw_records	columba_raw_records	baseline_valid_loci	columba_valid_loci	shared_baseline_loci	baseline_missing_from_columba	columba_only_valid_loci	columba_invalid_records	columba_non_gg_pam_records	columba_classes
+chr2_100_guide_001	0	0	151	170	1	1	1	0	0	0	169	{'exact': 1, 'guide_insertion': 168, 'reference_deletion': 1}
+chr2_100_guide_002	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_003	0	0	3	3	1	1	1	0	0	0	2	{'exact': 1, 'guide_insertion': 2}
+chr2_100_guide_004	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_005	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_006	0	0	2	2	1	1	1	0	0	0	1	{'guide_insertion': 1, 'exact': 1}
+chr2_100_guide_007	0	0	1	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_008	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_009	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_010	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_011	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_012	0	0	4	9	4	7	4	0	3	0	2	{'exact': 4, 'guide_insertion': 5}
+chr2_100_guide_013	0	0	15	322	9	203	9	0	194	0	119	{'reference_deletion': 9, 'guide_insertion': 309, 'exact': 4}
+chr2_100_guide_014	0	0	2	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_015	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_016	0	0	2	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_017	0	0	3	3	1	1	1	0	0	0	2	{'exact': 1, 'guide_insertion': 2}
+chr2_100_guide_018	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_019	0	0	5	6	1	1	1	0	0	0	5	{'exact': 1, 'reference_deletion': 2, 'guide_insertion': 3}
+chr2_100_guide_020	0	0	2	2	2	2	2	0	0	0	0	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_021	0	0	1	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_022	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_023	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_024	0	0	5	6	5	5	5	0	0	0	1	{'exact': 5, 'guide_insertion': 1}
+chr2_100_guide_025	0	0	2	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_026	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_027	0	0	2	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_028	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_029	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_030	0	0	2	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_031	0	0	2	4	1	1	1	0	0	0	3	{'guide_insertion': 3, 'exact': 1}
+chr2_100_guide_032	0	0	2	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_033	0	0	2	2	1	1	1	0	0	0	1	{'guide_insertion': 1, 'exact': 1}
+chr2_100_guide_034	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_035	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_036	0	0	3	3	1	1	1	0	0	0	2	{'exact': 1, 'reference_deletion': 1, 'guide_insertion': 1}
+chr2_100_guide_037	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_038	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_039	0	0	76	5398	74	5141	74	0	5067	0	257	{'guide_insertion': 5380, 'exact': 11, 'reference_deletion': 7}
+chr2_100_guide_040	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_041	0	0	17	24	15	22	15	0	7	0	2	{'reference_deletion': 8, 'guide_insertion': 8, 'exact': 8}
+chr2_100_guide_042	0	0	3	3	2	2	2	0	0	0	1	{'exact': 1, 'guide_insertion': 2}
+chr2_100_guide_043	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_044	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_045	0	0	1	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_046	0	0	6	22	3	3	3	0	0	0	19	{'guide_insertion': 16, 'reference_deletion': 3, 'exact': 3}
+chr2_100_guide_047	0	0	2	3	1	1	1	0	0	0	2	{'reference_deletion': 2, 'exact': 1}
+chr2_100_guide_048	0	0	2	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_049	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_050	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_051	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_052	0	0	7	7	1	1	1	0	0	0	6	{'guide_insertion': 6, 'exact': 1}
+chr2_100_guide_053	0	0	1	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_054	0	0	404	435	2	5	2	0	3	0	430	{'reference_deletion': 403, 'guide_insertion': 30, 'exact': 2}
+chr2_100_guide_055	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_056	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_057	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_058	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_059	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_060	0	0	3	5	1	1	1	0	0	0	4	{'guide_insertion': 3, 'exact': 1, 'reference_deletion': 1}
+chr2_100_guide_061	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_062	0	0	5	7	4	6	4	0	2	0	1	{'guide_insertion': 6, 'exact': 1}
+chr2_100_guide_063	0	0	18	53	9	21	9	0	12	0	32	{'guide_insertion': 45, 'exact': 6, 'reference_deletion': 2}
+chr2_100_guide_064	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_065	0	0	3	3	1	1	1	0	0	0	2	{'guide_insertion': 2, 'exact': 1}
+chr2_100_guide_066	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_067	0	0	2	3	1	1	1	0	0	0	2	{'exact': 1, 'guide_insertion': 2}
+chr2_100_guide_068	0	0	1	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_069	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_070	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_071	0	0	3	6	2	2	2	0	0	0	4	{'guide_insertion': 4, 'exact': 2}
+chr2_100_guide_072	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_073	0	0	2	2	1	1	1	0	0	0	1	{'guide_insertion': 1, 'exact': 1}
+chr2_100_guide_074	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_075	0	0	2	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_076	0	0	2	3	1	1	1	0	0	0	2	{'exact': 1, 'reference_deletion': 1, 'guide_insertion': 1}
+chr2_100_guide_077	0	0	3	4	1	1	1	0	0	0	3	{'guide_insertion': 3, 'exact': 1}
+chr2_100_guide_078	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_079	0	0	1	2	1	1	1	0	0	0	1	{'guide_insertion': 1, 'exact': 1}
+chr2_100_guide_080	0	0	4	12	1	1	1	0	0	0	11	{'guide_insertion': 10, 'exact': 1, 'reference_deletion': 1}
+chr2_100_guide_081	0	0	1	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_082	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_083	0	0	6	44	2	6	2	0	4	0	38	{'guide_insertion': 39, 'reference_deletion': 4, 'exact': 1}
+chr2_100_guide_084	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_085	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_086	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_087	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_088	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_089	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_090	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_091	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_092	0	0	3	3	1	1	1	0	0	0	2	{'guide_insertion': 2, 'exact': 1}
+chr2_100_guide_093	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_094	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_095	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_096	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr2_100_guide_097	0	0	3	3	3	3	3	0	0	0	0	{'exact': 3}
+chr2_100_guide_098	0	0	2	2	1	1	1	0	0	0	1	{'exact': 1, 'guide_insertion': 1}
+chr2_100_guide_099	0	0	3	3	1	1	1	0	0	0	2	{'guide_insertion': 2, 'exact': 1}
+chr2_100_guide_100	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
