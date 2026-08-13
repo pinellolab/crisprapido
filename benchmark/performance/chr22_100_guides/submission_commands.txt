@@ -1,0 +1,14 @@
+# Matched-node chr22_100 timing rerun on tux05. Run from the repository root.
+# Use one fresh shared RUN_ID for all four arrays.
+
+export RUN_ID="chr22_100_guides_tux05_timing_$(date -u +%Y%m%dT%H%M%SZ)"
+
+# Optional single-task smoke commands; submit only if desired before the full arrays.
+sbatch -p tux -w tux05 --array=1-1 --export=ALL,RUN_ID="${RUN_ID}_smoke_baseline",ITERATION=smoke benchmark/performance/chr22_100_guides/slurm_measured_baseline.sbatch
+sbatch -p tux -w tux05 --array=1-1 --export=ALL,RUN_ID="${RUN_ID}_smoke_columba",ITERATION=smoke benchmark/performance/chr22_100_guides/slurm_measured_columba.sbatch
+
+# Full matched-node timing arrays.
+sbatch -p tux -w tux05 --export=ALL,RUN_ID="${RUN_ID}",ITERATION=measured_1 benchmark/performance/chr22_100_guides/slurm_measured_baseline.sbatch
+sbatch -p tux -w tux05 --export=ALL,RUN_ID="${RUN_ID}",ITERATION=measured_1 benchmark/performance/chr22_100_guides/slurm_measured_columba.sbatch
+sbatch -p tux -w tux05 --export=ALL,RUN_ID="${RUN_ID}",ITERATION=measured_2 benchmark/performance/chr22_100_guides/slurm_measured_columba.sbatch
+sbatch -p tux -w tux05 --export=ALL,RUN_ID="${RUN_ID}",ITERATION=measured_3 benchmark/performance/chr22_100_guides/slurm_measured_columba.sbatch

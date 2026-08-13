@@ -1,0 +1,5 @@
+job_kind	time_limit	cpus	memory	array_concurrency	notes
+smoke_baseline	01:00:00	1	1G	1	Single batch of 10 guides on tux05; expected around 6 minutes from prior chr22_100 baseline rate, with margin.
+smoke_columba	00:30:00	1	3G	1	Single batch of 10 guides on tux05; expected under 2 minutes, subject to high-output guides and fallback expansion.
+measured_baseline	02:00:00	1	1G	3	One measured baseline pass, 10 batches of 10 guides. Prior non-tux05 chr22_100 baseline was about 3424 s summed panel time, about 5.7 minutes per batch on average; 2 h per batch is conservative.
+measured_columba	01:00:00	1	3G	3	Three measured Columba passes, 10 batches each. Prior non-tux05 chr22_100 Columba was about 64 s summed panel time, but keep margin for repetitive guides and fallback expansion.
