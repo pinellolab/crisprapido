@@ -1,0 +1,22 @@
+panel_ordinal	canonical_chromosome	target_copy_class
+1	1	unique
+2	2	unique
+3	3	unique
+4	4	unique
+5	5	unique
+6	6	unique
+7	7	unique
+8	8	unique
+9	9	unique
+10	10	unique
+11	11	unique
+12	12	unique
+13	13	low-copy
+14	14	low-copy
+15	15	low-copy
+16	16	low-copy
+17	17	low-copy
+18	18	low-copy
+19	22	repetitive
+20	X	repetitive
+

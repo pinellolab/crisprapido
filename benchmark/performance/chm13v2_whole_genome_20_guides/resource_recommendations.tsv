@@ -1,0 +1,9 @@
+job_kind	time_limit	cpus	memory	array_concurrency	notes
+index_build	04:00:00	1	128G	1	Preparation only; excluded from query timing. Actual peak memory must be recorded.
+guide_preparation	06:00:00	1	32G	1	Runs deterministic candidate pools and whole-genome exact validation.
+exact_validation	03:00:00	1	32G	1	Revalidates the completed 20-guide panel at k=0.
+correctness_baseline	03:00:00	1	16G	4	Ten two-guide batches; expected roughly 35-50 minutes per batch on tux05.
+correctness_columba	02:00:00	1	32G	4	Includes whole-index loading, anchored WFA2, and bounded fallback.
+measured_baseline	03:00:00	1	16G	4	Run only after correctness eligibility; one full-panel measured pass initially.
+measured_columba	02:00:00	1	32G	4	Run only after correctness eligibility; three measured passes initially.
+

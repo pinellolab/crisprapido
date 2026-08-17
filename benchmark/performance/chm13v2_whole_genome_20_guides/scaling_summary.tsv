@@ -1,0 +1,4 @@
+reference	reference_length_bp	guide_count	timing_node	baseline_wall_seconds	columba_wall_seconds	baseline_seconds_per_guide	columba_seconds_per_guide	observed_speedup	baseline_peak_rss_kib	columba_peak_rss_kib	memory_ratio	baseline_paf_records	columba_paf_records	baseline_valid_loci	columba_valid_loci	baseline_missing	columba_invalid	baseline_replicates	columba_replicates
+chr22	51324926	100	tux05	1932.584993	84.294101	19.325850	0.842941	22.926693	127584	292428	2.292043	2892	12608	690	8896	0	0	1	3
+chr2	242696752	100	tux05	9125.410422	278.568223	91.254104	2.785682	32.758261	576084	1186088	2.058880	848	6658	222	5514	0	0	1	3
+CHM13v2_whole_genome	3117292070	20	tux05	32036.953851	239.322653	1601.847693	11.966133	133.865113	589000	14631642	24.841497	583	4249	127	701	0	0	1	2

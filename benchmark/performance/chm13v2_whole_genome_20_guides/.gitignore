@@ -1,0 +1,14 @@
+raw/*
+!raw/README.md
+preparation_raw/*
+!preparation_raw/README.md
+slurm_logs/*
+guides/*
+guides.fa
+guides.tsv
+batches.tsv
+validation_summary.tsv
+preparation_summary.txt
+reference_inventory.tsv
+__pycache__/
+
