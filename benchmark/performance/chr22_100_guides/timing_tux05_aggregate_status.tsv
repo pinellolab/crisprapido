@@ -1,0 +1,9 @@
+metric	value
+run_id	chr22_100_guides_tux05_20260813T160700Z_timing
+expected_batches_per_panel	10
+expected_guides_per_panel	100
+panels	4
+missing_items	0
+duplicate_items	0
+all_failures_zero	true
+all_complete	true

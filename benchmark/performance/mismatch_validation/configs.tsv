@@ -1,0 +1,4 @@
+config	max_mismatches	max_bulges	max_bulge_size	min_match_fraction	candidate_e	expected_loci
+A_m1_b0_z0	1	0	0	0.75	1	5
+B_m2_b0_z0	2	0	0	0.75	2	8
+C_m3_b0_z0	3	0	0	0.75	3	10

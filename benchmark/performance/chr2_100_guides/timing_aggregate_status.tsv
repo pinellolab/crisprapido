@@ -1,0 +1,7 @@
+metric	value
+run_id	chr2_100_guides_timing_20260813T133456Z
+expected_batches_per_panel	10
+expected_guides_per_panel	100
+panels	4
+missing_or_duplicate_items	0
+all_complete	true

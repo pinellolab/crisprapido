@@ -1,0 +1,7 @@
+config	m	b	z	f	candidate_e	manual_candidates	automatic_candidates	manual_records	automatic_records	manual_exit	automatic_exit	paf_byte_identical	stderr_diff
+A	0	0	0	0.75	0	12	not_observed	12	12	0	0	yes	none
+B	1	0	0	0.75	1	17	not_observed	13	13	0	0	yes	none
+C	0	1	1	0.75	1	17	not_observed	16	16	0	0	yes	none
+D	0	1	2	0.75	2	22	not_observed	18	18	0	0	yes	none
+E	1	1	2	0.75	3	22	not_observed	21	21	0	0	yes	none
+F	2	1	2	0.75	4	22	not_observed	22	22	0	0	yes	none

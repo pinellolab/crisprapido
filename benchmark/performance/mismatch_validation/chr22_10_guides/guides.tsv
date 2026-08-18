@@ -1,0 +1,11 @@
+guide_id	guide_sequence	chromosome	zero_based_protospacer_start	strand	pam	exact_k0_hits	copy_class	source_panel
+chr22_100_guide_004	GTCCCAGCAAGGAATTCCCA	22	1796687	+	GG	1	unique	chr22_100_guides
+chr22_100_guide_013	CTATTCAGTTCCCATATCCC	22	6415618	+	GG	1	unique	chr22_100_guides
+chr22_100_guide_024	AACGGCTCAATCAAAACAAA	22	12061323	+	GG	1	unique	chr22_100_guides
+chr22_100_guide_034	GTACTTGCAGCCCCAAGTTG	22	17193839	+	GG	1	unique	chr22_100_guides
+chr22_100_guide_046	TCAACACAGTGACATCAGCA	22	23352848	+	GG	1	unique	chr22_100_guides
+chr22_100_guide_056	ACCCCTCATGGTTGCTGCAG	22	28485319	+	GG	1	unique	chr22_100_guides
+chr22_100_guide_067	CACATCCCAAACTCTCAGCA	22	34130978	+	GG	1	unique	chr22_100_guides
+chr22_100_guide_078	GCCAGTAGTTAAGTTTTAGG	22	39776817	+	GG	1	unique	chr22_100_guides
+chr22_100_guide_089	CGAAGTTTCAATGAAATGCA	22	45422550	+	GG	1	unique	chr22_100_guides
+chr22_100_guide_100	GAAGGTGAAGGAATGAGCCA	22	51068298	+	GG	1	unique	chr22_100_guides

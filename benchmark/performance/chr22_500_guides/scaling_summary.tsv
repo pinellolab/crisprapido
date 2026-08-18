@@ -1,0 +1,4 @@
+reference	reference_length_bp	guide_count	baseline_wall_seconds	columba_wall_seconds	baseline_seconds_per_guide	columba_seconds_per_guide	observed_speedup	baseline_peak_rss_kib	columba_peak_rss_kib	memory_ratio	baseline_valid_loci	columba_valid_loci	baseline_missing	columba_invalid	baseline_replicates	columba_replicates
+chr22	51324926	20	664.124025	9.099324	33.206201	0.454966	72.986084	124276	290436	2.337024	291	3036	0	0	3	3
+chr22	51324926	100	3424.420954	64.244734	34.244210	0.642447	53.302749	125116	293164	2.343138	690	8896	0	0	3	3
+chr22	51324926	500	19918.452960	659.807203	39.836906	1.319614	30.188293	127608	308272	2.415773	1748	19765	0	0	1	3

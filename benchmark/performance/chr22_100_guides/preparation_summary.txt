@@ -1,0 +1,9 @@
+candidate_positions=3264489
+unique_candidate_guides=2368140
+selected_guides=100
+unique_guides=74
+low_copy_guides=21
+repetitive_guides=5
+no_exact_hit_guides=0
+all_columba_validated=True
+all_crisprapido_validated=True

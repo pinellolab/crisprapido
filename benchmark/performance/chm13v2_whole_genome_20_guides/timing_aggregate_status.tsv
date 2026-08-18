@@ -1,0 +1,12 @@
+metric	value
+run_id	chm13_wg20_controlled_timing_20260816T225040Z
+expected_batches_per_panel	10
+expected_guides_per_panel	20
+panels	4
+missing_or_duplicate_items	0
+all_failures_zero	true
+columba_output_deterministic	true
+columba_stderr_deterministic	true
+provenance_consistent	true
+baseline_array_job_ids	2657851,2695881
+all_complete	true

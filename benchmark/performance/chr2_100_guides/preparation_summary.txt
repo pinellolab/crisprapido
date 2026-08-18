@@ -1,0 +1,13 @@
+reference=/moosefs/raid5/salehi/crispr2/crispr-progress/columba-crispr-benchmark/data/real_reference/chm13v2_chr2.fa
+reference_sha256=6eb291348ce10644c2ad1dcaa9168549471ed127b1d5a57e91a6d3d57ff97fc9
+chromosome=2
+reference_length=242696752
+candidate_positions=11811029
+unique_candidate_guides=9999686
+selected_guides=100
+unique_guides=88
+low_copy_guides=10
+repetitive_guides=2
+no_exact_hit_guides=0
+all_columba_validated=True
+all_crisprapido_validated=True

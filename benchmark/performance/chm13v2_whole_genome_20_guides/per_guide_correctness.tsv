@@ -1,0 +1,21 @@
+guide_id	canonical_chromosome	target_copy_class	baseline_exit	columba_exit	baseline_raw_records	columba_raw_records	baseline_valid_loci	columba_valid_loci	shared_baseline_loci	baseline_missing_from_columba	columba_only_valid_loci	columba_invalid_records	columba_non_gg_pam_records	columba_classes
+chm13_wg20_guide_001	1	unique	0	0	3	6	1	1	1	0	0	0	5	{'exact': 1, 'guide_insertion': 4, 'reference_deletion': 1}
+chm13_wg20_guide_002	2	unique	0	0	3	3	1	1	1	0	0	0	2	{'exact': 1, 'guide_insertion': 2}
+chm13_wg20_guide_003	3	unique	0	0	6	6	1	1	1	0	0	0	5	{'guide_insertion': 5, 'exact': 1}
+chm13_wg20_guide_004	4	unique	0	0	3	4	1	1	1	0	0	0	3	{'guide_insertion': 3, 'exact': 1}
+chm13_wg20_guide_005	5	unique	0	0	2	6	1	2	1	0	1	0	4	{'guide_insertion': 3, 'reference_deletion': 2, 'exact': 1}
+chm13_wg20_guide_006	6	unique	0	0	11	15	3	4	3	0	1	0	11	{'guide_insertion': 13, 'reference_deletion': 1, 'exact': 1}
+chm13_wg20_guide_007	7	unique	0	0	23	27	2	2	2	0	0	0	25	{'reference_deletion': 7, 'guide_insertion': 19, 'exact': 1}
+chm13_wg20_guide_008	8	unique	0	0	5	5	1	1	1	0	0	0	4	{'guide_insertion': 4, 'exact': 1}
+chm13_wg20_guide_009	9	unique	0	0	4	17	1	9	1	0	8	0	8	{'guide_insertion': 13, 'reference_deletion': 3, 'exact': 1}
+chm13_wg20_guide_010	10	unique	0	0	8	11	1	1	1	0	0	0	10	{'exact': 1, 'guide_insertion': 5, 'reference_deletion': 5}
+chm13_wg20_guide_011	11	unique	0	0	4	5	2	2	2	0	0	0	3	{'guide_insertion': 4, 'exact': 1}
+chm13_wg20_guide_012	12	unique	0	0	2	3	1	1	1	0	0	0	2	{'guide_insertion': 2, 'exact': 1}
+chm13_wg20_guide_013	13	low-copy	0	0	42	543	23	312	23	0	289	0	231	{'guide_insertion': 503, 'reference_deletion': 36, 'exact': 4}
+chm13_wg20_guide_014	14	low-copy	0	0	8	12	6	8	6	0	2	0	4	{'guide_insertion': 8, 'exact': 4}
+chm13_wg20_guide_015	15	low-copy	0	0	71	86	52	60	52	0	8	0	26	{'exact': 8, 'guide_insertion': 74, 'reference_deletion': 4}
+chm13_wg20_guide_016	16	low-copy	0	0	148	2654	8	8	8	0	0	0	2646	{'guide_insertion': 2646, 'exact': 8}
+chm13_wg20_guide_017	17	low-copy	0	0	24	38	2	4	2	0	2	0	34	{'guide_insertion': 25, 'reference_deletion': 12, 'exact': 1}
+chm13_wg20_guide_018	18	low-copy	0	0	15	25	2	3	2	0	1	0	22	{'guide_insertion': 20, 'reference_deletion': 4, 'exact': 1}
+chm13_wg20_guide_019	22	repetitive	0	0	41	71	6	16	6	0	10	0	55	{'exact': 3, 'reference_deletion': 22, 'guide_insertion': 46}
+chm13_wg20_guide_020	X	repetitive	0	0	160	712	12	264	12	0	252	0	448	{'guide_insertion': 481, 'reference_deletion': 229, 'exact': 2}

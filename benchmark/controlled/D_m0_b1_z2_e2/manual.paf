@@ -1,0 +1,18 @@
+Guide	20	0	20	+	near_beginning	31	1	21	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	near_end	31	10	30	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=
+Guide	20	0	20	+	one_bp_deletion_relative_to_guide	39	10	29	19	20	255	as:i:6	nm:i:0	ng:i:1	bs:i:1	cg:Z:10=1I9=	cf:f:0.0000
+Guide	20	1	21	+	one_bp_insertion_relative_to_guide	41	10	31	20	21	255	as:i:6	nm:i:0	ng:i:1	bs:i:1	cg:Z:10=1D10=	cf:f:0.0000
+Guide	20	0	20	+	perfect_forward	40	10	30	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	-	perfect_reverse_complement	40	10	30	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	repetitive_target	112	10	30	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	repetitive_target	112	34	54	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	repetitive_target	112	58	78	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	repetitive_target	112	82	102	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	terminal_deletion_3prime	39	10	29	19	20	255	as:i:6	nm:i:0	ng:i:1	bs:i:1	cg:Z:19=1I	cf:f:0.0000
+Guide	20	0	20	+	terminal_deletion_5prime	39	10	29	19	20	255	as:i:6	nm:i:0	ng:i:1	bs:i:1	cg:Z:1I19=	cf:f:0.0000
+Guide	20	0	20	+	terminal_insertion_3prime	40	10	30	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	terminal_insertion_5prime	41	11	31	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	two_bp_deletion_relative_to_guide	38	10	28	18	20	255	as:i:7	nm:i:0	ng:i:1	bs:i:2	cg:Z:11=2I7=	cf:f:0.0000
+Guide	20	2	22	+	two_bp_insertion_relative_to_guide	42	10	32	20	22	255	as:i:7	nm:i:0	ng:i:1	bs:i:2	cg:Z:10=2D10=	cf:f:0.0000
+Guide	20	0	20	+	two_nearby_occurrences	65	10	30	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000
+Guide	20	0	20	+	two_nearby_occurrences	65	35	55	20	20	255	as:i:0	nm:i:0	ng:i:0	bs:i:0	cg:Z:20=	cf:f:0.0000

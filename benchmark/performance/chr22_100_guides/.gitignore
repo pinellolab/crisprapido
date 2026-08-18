@@ -1,0 +1,6 @@
+raw/*
+!raw/README.md
+preparation_raw/*
+!preparation_raw/README.md
+slurm_logs/
+__pycache__/

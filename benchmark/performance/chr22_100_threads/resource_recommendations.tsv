@@ -1,0 +1,9 @@
+threads	job_kind	time_limit	cpus	memory	array_concurrency	notes
+1	baseline	02:00:00	1	1G	3	Matches completed tux05 one-thread run; one measured replicate.
+1	columba	01:00:00	1	3G	3	Three measured replicates; includes Columba plus serial imported verification/fallback.
+2	baseline	02:00:00	2	2G	3	CPU request must match THREADS=2; memory margin doubled conservatively.
+2	columba	01:00:00	2	4G	3	Columba gets -t 2; Rust imported verification remains serial.
+4	baseline	02:00:00	4	4G	2	Lower concurrency avoids oversubscribing tux05 while using 4 CPUs per task.
+4	columba	01:00:00	4	6G	2	Columba gets -t 4; monitor RSS growth.
+8	baseline	02:00:00	8	8G	1	Run one batch at a time to avoid oversubscription.
+8	columba	01:00:00	8	10G	1	Run one batch at a time; useful to detect scaling saturation.

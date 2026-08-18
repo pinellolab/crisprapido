@@ -1,0 +1,5 @@
+job_kind	time_limit	cpus	memory	array_concurrency	notes
+correctness_baseline	08:00:00	1	1G	3	Baseline one pass: about 4.5 h of summed compute by chr22 length scaling. One correctness baseline plus one measured baseline: about 9.0 h summed compute. Columba passes are expected to be minutes each, subject to repetitive guides and fallback expansion.
+correctness_columba	02:00:00	1	3G	3	Shorter than baseline; includes Columba execution, WFA2 verification, fallback expansion, and output writing.
+measured_baseline	08:00:00	1	1G	3	One measured baseline pass only for this expansion; do not report a baseline median.
+measured_columba	02:00:00	1	3G	3	Run three measured Columba passes.

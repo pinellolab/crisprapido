@@ -1,0 +1,3 @@
+mode	command
+baseline	target/release/crisprapido -r ../data/real_reference/chm13v2_chr22.fa -g <GUIDE> -p GG -m 0 -b 1 -z 2 -f 0.75 -t 1
+columba	target/release/crisprapido -r ../data/real_reference/chm13v2_chr22.fa -g <GUIDE> -p GG -m 0 -b 1 -z 2 -f 0.75 -t 1 --columba-bin ../columba/build_Vanilla/columba --columba-index ../results/chm13_chr22_index/chm13v2_chr22

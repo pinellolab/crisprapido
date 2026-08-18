@@ -1,0 +1,21 @@
+guide_id	baseline_exit	columba_exit	baseline_raw_records	columba_raw_records	baseline_valid_loci	columba_valid_loci	shared_baseline_loci	baseline_missing_from_columba	columba_only_valid_loci	columba_invalid_records	columba_non_gg_pam_records	columba_classes
+chr22_guide_01	0	0	16	848	15	825	15	0	810	0	23	{'guide_insertion': 833, 'reference_deletion': 9, 'exact': 6}
+chr22_guide_02	0	0	68	70	66	69	66	0	3	0	1	{'exact': 68, 'guide_insertion': 2}
+chr22_guide_03	0	0	1	3	1	1	1	0	0	0	2	{'exact': 1, 'guide_insertion': 2}
+chr22_guide_04	0	0	2	2	1	2	1	0	1	0	0	{'exact': 2}
+chr22_guide_05	0	0	149	149	135	135	135	0	0	0	14	{'reference_deletion': 143, 'exact': 1, 'guide_insertion': 5}
+chr22_guide_06	0	0	58	2001	58	1989	58	0	1931	0	12	{'guide_insertion': 1998, 'exact': 3}
+chr22_guide_07	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_08	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_09	0	0	2	2	2	2	2	0	0	0	0	{'exact': 2}
+chr22_guide_10	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_11	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_12	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_13	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_14	0	0	2	2	1	1	1	0	0	0	1	{'guide_insertion': 1, 'exact': 1}
+chr22_guide_15	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_16	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_17	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_18	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_19	0	0	1	1	1	1	1	0	0	0	0	{'exact': 1}
+chr22_guide_20	0	0	1	7	1	1	1	0	0	0	6	{'guide_insertion': 6, 'exact': 1}

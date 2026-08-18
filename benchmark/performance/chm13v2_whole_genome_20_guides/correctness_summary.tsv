@@ -1,0 +1,2 @@
+baseline_raw_records	columba_raw_records	baseline_valid_loci	columba_valid_loci	shared_baseline_loci	baseline_missing_from_columba	columba_only_valid_loci	columba_invalid_records	columba_non_gg_pam_records	timing_eligible
+583	4249	127	701	127	0	574	0	3548	yes

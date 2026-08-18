@@ -1,0 +1,7 @@
+metric	value
+run_id	chr22_500_guides_20260810T163619_final_timing
+expected_batches_per_panel	20
+expected_guides_per_panel	500
+panels	4
+missing_or_duplicate_items	0
+all_complete	true
