@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render manuscript Figure 4 from compact per-locus source data."""
+"""Render manuscript Figure 4 and standalone panels from per-locus data."""
 
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ SOURCE_DATA_PATH = FIGURE_DIR / "figure4_source_data.tsv"
 SUMMARY_PATH = BENCHMARK_DIR / "correctness_summary.tsv"
 PDF_PATH = FIGURE_DIR / "figure4_candidate_characterization.pdf"
 PNG_PATH = FIGURE_DIR / "figure4_candidate_characterization.png"
+PANEL_DIR = FIGURE_DIR / "panels"
 
 BASELINE_COLOR = "#4D4D4D"
 COLUMBA_COLOR = "#0072B2"
@@ -43,12 +44,13 @@ EVENT_ORDER = [
     "reference_deletion_2nt",
 ]
 EVENT_STYLE = {
-    "exact": ("Exact (ED0)", BASELINE_COLOR),
-    "guide_insertion_1nt": ("1-nt I (ED1)", COLUMBA_COLOR),
-    "guide_insertion_2nt": ("2-nt I (ED2)", LIGHT_BLUE),
-    "reference_deletion_1nt": ("1-nt D (ED1)", ORANGE),
-    "reference_deletion_2nt": ("2-nt D (ED2)", YELLOW),
+    "exact": ("Exact", BASELINE_COLOR),
+    "guide_insertion_1nt": ("1-nt guide insertion", COLUMBA_COLOR),
+    "guide_insertion_2nt": ("2-nt guide insertion", LIGHT_BLUE),
+    "reference_deletion_1nt": ("1-nt reference deletion", ORANGE),
+    "reference_deletion_2nt": ("2-nt reference deletion", YELLOW),
 }
+EVENT_TICK_LABELS = ["Exact", "1-nt I", "2-nt I", "1-nt D", "2-nt D"]
 COMPARISON_STYLE = {
     "shared_baseline": ("Shared with baseline", BASELINE_COLOR),
     "columba_only": ("Columba-only", COLUMBA_COLOR),
@@ -61,6 +63,38 @@ def read_tsv(path: Path) -> list[dict[str, str]]:
     if not rows:
         raise ValueError(f"No rows in {path}")
     return rows
+
+
+def intended_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [row for row in rows if row["intended_valid"] == "yes"]
+
+
+def event_counts(rows: list[dict[str, str]]) -> dict[str, Counter[str]]:
+    valid = intended_rows(rows)
+    return {
+        group: Counter(
+            row["canonical_event_class"]
+            for row in valid
+            if row["comparison_class"] == group
+        )
+        for group in COMPARISON_STYLE
+    }
+
+
+def edit_distance_counts(rows: list[dict[str, str]]) -> dict[str, Counter[int]]:
+    valid = intended_rows(rows)
+    return {
+        group: Counter(
+            int(row["canonical_edit_distance"])
+            for row in valid
+            if row["comparison_class"] == group
+        )
+        for group in COMPARISON_STYLE
+    }
+
+
+def pam_counts(rows: list[dict[str, str]]) -> Counter[str]:
+    return Counter(row["observed_pam"] for row in rows)
 
 
 def validate_source(rows: list[dict[str, str]]) -> dict[str, int]:
@@ -89,16 +123,62 @@ def validate_source(rows: list[dict[str, str]]) -> dict[str, int]:
         if observed != expected:
             raise ValueError(f"{field}: source data {observed}, summary {expected}")
 
-    intended = [row for row in rows if row["intended_valid"] == "yes"]
-    if any(row["requested_pam_match"] != "yes" for row in intended):
+    valid = intended_rows(rows)
+    if any(row["requested_pam_match"] != "yes" for row in valid):
         raise ValueError("An intended-valid row does not have the requested PAM")
-    if any(int(row["canonical_mismatches"]) != 0 for row in intended):
+    if any(int(row["canonical_mismatches"]) != 0 for row in valid):
         raise ValueError("Canonical mismatches are nonzero despite m=0")
-    if any(row["canonical_event_class"] not in EVENT_STYLE for row in intended):
+    if any(row["canonical_event_class"] not in EVENT_STYLE for row in valid):
         raise ValueError("Unexpected canonical event class")
-    if any(not (0.0 <= float(row["cfd_score"]) <= 1.0) for row in rows):
-        raise ValueError("CFD score outside [0, 1]")
+    if any(int(row["canonical_edit_distance"]) not in (0, 1, 2) for row in valid):
+        raise ValueError("Unexpected canonical edit distance")
+
+    events = event_counts(rows)
+    distances = edit_distance_counts(rows)
+    for group in COMPARISON_STYLE:
+        event_total = sum(events[group].values())
+        distance_total = sum(distances[group].values())
+        expected = counts[
+            "shared_baseline_loci"
+            if group == "shared_baseline"
+            else "columba_only_valid_loci"
+        ]
+        if event_total != expected or distance_total != expected:
+            raise ValueError(
+                f"{group}: event total {event_total}, ED total {distance_total}, expected {expected}"
+            )
+
+    pams = pam_counts(rows)
+    gg = pams["GG"]
+    non_gg = len(rows) - gg
+    if gg != counts["columba_valid_loci"]:
+        raise ValueError(f"GG count {gg} != valid-locus count {counts['columba_valid_loci']}")
+    if non_gg != counts["columba_non_gg_pam_records"]:
+        raise ValueError(
+            f"non-GG count {non_gg} != summary {counts['columba_non_gg_pam_records']}"
+        )
+    if counts["shared_baseline_loci"] + counts["columba_only_valid_loci"] != gg:
+        raise ValueError("Shared and Columba-only counts do not sum to requested-GG loci")
     return counts
+
+
+def apply_style(standalone: bool = False) -> None:
+    base = 9.5 if standalone else 7.5
+    plt.rcParams.update(
+        {
+            "font.family": "DejaVu Sans",
+            "font.size": base,
+            "axes.labelsize": base,
+            "axes.titlesize": 11.0 if standalone else 8.5,
+            "axes.titleweight": "semibold",
+            "axes.linewidth": 0.7,
+            "xtick.labelsize": 8.8 if standalone else 7.0,
+            "ytick.labelsize": 8.8 if standalone else 7.0,
+            "legend.fontsize": 8.8 if standalone else 6.5,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+        }
+    )
 
 
 def configure_axis(axis) -> None:
@@ -110,81 +190,76 @@ def configure_axis(axis) -> None:
     axis.grid(axis="y", color="#E1E1E1", linewidth=0.55, zorder=0)
 
 
-def panel_a(axis, rows: list[dict[str, str]]) -> None:
-    classes = ["shared_baseline", "columba_only"]
-    labels = ["Shared", "Columba-only"]
-    positions = [0, 1]
-    bottoms = [0.0, 0.0]
-    totals = [sum(row["comparison_class"] == group for row in rows) for group in classes]
+def annotate_bars(axis, bars, values: list[int], fontsize: float) -> None:
+    for bar, value in zip(bars, values, strict=True):
+        axis.annotate(
+            f"{value:,}",
+            (bar.get_x() + bar.get_width() / 2, max(value, 0)),
+            xytext=(0, 3),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=fontsize,
+            color=DARK_TEXT,
+        )
 
-    for event in EVENT_ORDER:
-        values = []
-        for group, total in zip(classes, totals, strict=True):
-            count = sum(
-                row["comparison_class"] == group
-                and row["canonical_event_class"] == event
-                for row in rows
-            )
-            values.append(100.0 * count / total)
+
+def panel_a(axis, rows: list[dict[str, str]], standalone: bool = False) -> None:
+    counts = event_counts(rows)
+    positions = list(range(len(EVENT_ORDER)))
+    width = 0.36
+    for offset, group in ((-width / 2, "shared_baseline"), (width / 2, "columba_only")):
+        values = [counts[group][event] for event in EVENT_ORDER]
+        label, color = COMPARISON_STYLE[group]
         bars = axis.bar(
-            positions,
+            [position + offset for position in positions],
             values,
-            bottom=bottoms,
-            width=0.62,
-            color=EVENT_STYLE[event][1],
+            width=width,
+            color=color,
             edgecolor="white",
-            linewidth=0.6,
-            label=EVENT_STYLE[event][0],
+            linewidth=0.5,
+            label=f"{label} (n={sum(values):,})",
             zorder=3,
         )
-        for index, (bar, value) in enumerate(zip(bars, values, strict=True)):
-            if value >= 7.0:
-                axis.text(
-                    bar.get_x() + bar.get_width() / 2,
-                    bottoms[index] + value / 2,
-                    f"{value:.0f}%",
-                    ha="center",
-                    va="center",
-                    color="white",
-                    fontsize=6.4,
-                    fontweight="semibold",
-                )
-            bottoms[index] += value
+        annotate_bars(axis, bars, values, 7.5 if standalone else 5.8)
 
-    axis.set_xticks(positions, [f"{label}\n(n={total:,})" for label, total in zip(labels, totals, strict=True)])
-    axis.set_ylim(0, 100)
-    axis.set_ylabel("Composition of oracle-valid GG loci (%)")
-    axis.set_title("Edit/event composition", loc="left", pad=16)
-    axis.legend(
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.17),
-        ncol=3,
-        frameon=False,
-        fontsize=6.1,
-        handlelength=1.2,
-        columnspacing=1.0,
-    )
+    axis.set_xticks(positions, EVENT_TICK_LABELS, rotation=20, ha="right")
+    axis.set_ylabel("Number of loci")
+    axis.set_title("Edit/event composition", loc="left", pad=15 if not standalone else 18)
+    axis.legend(loc="upper right", frameon=False)
+    axis.margins(y=0.12)
     axis.text(
         0.0,
         1.015,
-        "Canonical oracle representation; m=0 (no substitution distribution)",
+        "Canonical oracle representation; m=0",
         transform=axis.transAxes,
         ha="left",
         va="bottom",
-        fontsize=6.1,
+        fontsize=8.0 if standalone else 6.1,
+        color="#444444",
+    )
+    axis.text(
+        0.0,
+        -0.28 if standalone else -0.23,
+        "I: guide insertion relative to reference; D: reference-consuming deletion",
+        transform=axis.transAxes,
+        ha="left",
+        va="top",
+        fontsize=7.8 if standalone else 5.9,
         color="#444444",
     )
 
 
-def panel_b(axis, rows: list[dict[str, str]]) -> None:
+def panel_b(axis, rows: list[dict[str, str]], standalone: bool = False) -> None:
     bases = "ACGT"
     dinucleotides = [left + right for left in bases for right in bases]
-    counts = Counter(row["observed_pam"] for row in rows)
+    counts = pam_counts(rows)
     values = [counts[pam] for pam in dinucleotides]
     colors = [COLUMBA_COLOR if pam == "GG" else LIGHT_GRAY for pam in dinucleotides]
-    axis.bar(range(len(dinucleotides)), values, color=colors, width=0.78, zorder=3)
+    bars = axis.bar(range(len(dinucleotides)), values, color=colors, width=0.78, zorder=3)
     axis.set_yscale("log")
     axis.set_xticks(range(len(dinucleotides)), dinucleotides, rotation=45, ha="right")
+    axis.set_xlabel("Observed PAM dinucleotide")
     axis.set_ylabel("Final PAF records (log scale)")
     axis.set_title("Observed PAM composition", loc="left", pad=7)
     gg = counts["GG"]
@@ -192,57 +267,76 @@ def panel_b(axis, rows: list[dict[str, str]]) -> None:
     axis.text(
         0.98,
         0.95,
-        f"GG: {gg:,}\nnon-GG: {non_gg:,}",
+        f"Requested GG: {gg:,}\nnon-GG: {non_gg:,}\ntotal: {len(rows):,}",
         transform=axis.transAxes,
         ha="right",
         va="top",
-        fontsize=6.8,
+        fontsize=8.8 if standalone else 6.8,
         color=DARK_TEXT,
     )
-
-
-def ecdf(values: list[float]) -> tuple[list[float], list[float]]:
-    ordered = sorted(values)
-    cumulative = [100.0 * index / len(ordered) for index in range(1, len(ordered) + 1)]
-    return ordered, cumulative
-
-
-def panel_c(axis, rows: list[dict[str, str]]) -> None:
-    for group in ("shared_baseline", "columba_only"):
-        values = [
-            float(row["cfd_score"])
-            for row in rows
-            if row["comparison_class"] == group
-        ]
-        x_values, y_values = ecdf(values)
-        label, color = COMPARISON_STYLE[group]
-        axis.step(
-            x_values,
-            y_values,
-            where="post",
-            color=color,
-            linewidth=1.7,
-            label=f"{label} (n={len(values):,})",
+    if standalone:
+        gg_index = dinucleotides.index("GG")
+        bar = bars[gg_index]
+        axis.annotate(
+            f"{gg:,}",
+            (bar.get_x() + bar.get_width() / 2, gg),
+            xytext=(0, 4),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=8.2,
+            color=COLUMBA_COLOR,
         )
-    axis.set_xlim(0, 1.0)
-    axis.set_ylim(0, 100)
-    axis.set_xlabel("Reported CFD score")
-    axis.set_ylabel("Cumulative loci (%)")
-    axis.set_title("CFD scores for oracle-valid GG loci", loc="left", pad=16)
-    axis.legend(loc="lower right", frameon=False, fontsize=6.7)
+
+
+def panel_c(axis, rows: list[dict[str, str]], standalone: bool = False) -> None:
+    counts = edit_distance_counts(rows)
+    distances = [0, 1, 2]
+    width = 0.36
+    for offset, group in ((-width / 2, "shared_baseline"), (width / 2, "columba_only")):
+        values = [counts[group][distance] for distance in distances]
+        label, color = COMPARISON_STYLE[group]
+        bars = axis.bar(
+            [distance + offset for distance in distances],
+            values,
+            width=width,
+            color=color,
+            edgecolor="white",
+            linewidth=0.5,
+            label=f"{label} (n={sum(values):,})",
+            zorder=3,
+        )
+        annotate_bars(axis, bars, values, 7.5 if standalone else 6.0)
+
+    axis.set_xticks(distances, ["0", "1", "2"])
+    axis.set_xlabel("Edit distance")
+    axis.set_ylabel("Number of loci")
+    axis.set_title("Edit-distance composition", loc="left", pad=15 if not standalone else 18)
+    axis.legend(loc="upper left", frameon=False)
+    axis.margins(y=0.12)
     axis.text(
         0.0,
         1.015,
-        "Non-GG records excluded; scores retain PAF precision",
+        "m=0; edit distance is driven by indel events",
         transform=axis.transAxes,
         ha="left",
         va="bottom",
-        fontsize=6.1,
+        fontsize=8.0 if standalone else 6.1,
         color="#444444",
     )
 
 
-def draw_box(axis, xy, width, height, text, facecolor, edgecolor, text_color=DARK_TEXT):
+def draw_box(
+    axis,
+    xy,
+    width,
+    height,
+    text,
+    facecolor,
+    edgecolor,
+    fontsize: float,
+    text_color=DARK_TEXT,
+):
     box = Rectangle(
         xy,
         width,
@@ -260,19 +354,19 @@ def draw_box(axis, xy, width, height, text, facecolor, edgecolor, text_color=DAR
         transform=axis.transAxes,
         ha="center",
         va="center",
-        fontsize=7.0,
+        fontsize=fontsize,
         color=text_color,
         fontweight="semibold",
     )
 
 
-def draw_arrow(axis, start, end) -> None:
+def draw_arrow(axis, start, end, scale: float = 8) -> None:
     arrow = FancyArrowPatch(
         start,
         end,
         transform=axis.transAxes,
         arrowstyle="-|>",
-        mutation_scale=8,
+        mutation_scale=scale,
         linewidth=0.8,
         color="#666666",
         connectionstyle="arc3,rad=0.0",
@@ -280,14 +374,14 @@ def draw_arrow(axis, start, end) -> None:
     axis.add_patch(arrow)
 
 
-def panel_d(axis, rows: list[dict[str, str]], counts: dict[str, int]) -> None:
+def panel_d(
+    axis,
+    rows: list[dict[str, str]],
+    counts: dict[str, int],
+    standalone: bool = False,
+) -> None:
     axis.set_axis_off()
-    axis.set_title(
-        "Post-output classification\n(not a candidate/filtering funnel)",
-        loc="left",
-        pad=4,
-        fontsize=8.0,
-    )
+    axis.set_title("Post-output classification", loc="left", pad=8)
     final_count = len(rows)
     oracle_valid = sum(row["oracle_valid"] == "yes" for row in rows)
     gg_valid = sum(row["intended_valid"] == "yes" for row in rows)
@@ -295,36 +389,123 @@ def panel_d(axis, rows: list[dict[str, str]], counts: dict[str, int]) -> None:
     columba_only = counts["columba_only_valid_loci"]
     non_gg = counts["columba_non_gg_pam_records"]
     invalid = counts["columba_invalid_records"]
+    box_font = 9.5 if standalone else 7.0
 
-    draw_box(axis, (0.34, 0.79), 0.32, 0.12, f"Final PAF\n{final_count:,}", "#F2F2F2", "#777777")
-    draw_box(axis, (0.31, 0.58), 0.38, 0.12, f"Oracle alignment-valid\n{oracle_valid:,}", "#E8F3F8", COLUMBA_COLOR)
-    draw_box(axis, (0.36, 0.37), 0.28, 0.12, f"Requested GG\n{gg_valid:,}", "#D9EEF8", COLUMBA_COLOR)
-    draw_arrow(axis, (0.50, 0.79), (0.50, 0.70))
-    draw_arrow(axis, (0.50, 0.58), (0.50, 0.49))
-    axis.text(0.71, 0.63, f"{invalid:,} invalid", transform=axis.transAxes, ha="left", fontsize=6.2, color="#555555")
-    axis.text(0.67, 0.42, f"{non_gg:,} non-GG", transform=axis.transAxes, ha="left", fontsize=6.2, color="#555555")
-
-    draw_box(axis, (0.04, 0.08), 0.38, 0.15, f"Shared baseline loci\n{shared:,}", "#E1E1E1", BASELINE_COLOR)
-    draw_box(axis, (0.53, 0.08), 0.43, 0.15, f"Additional Columba-only\noracle-valid loci\n{columba_only:,}", "#D9EEF8", COLUMBA_COLOR)
-    draw_arrow(axis, (0.44, 0.37), (0.25, 0.23))
-    draw_arrow(axis, (0.56, 0.37), (0.74, 0.23))
-
-
-def render(rows: list[dict[str, str]], counts: dict[str, int]) -> None:
-    plt.rcParams.update(
-        {
-            "font.family": "DejaVu Sans",
-            "font.size": 7.5,
-            "axes.labelsize": 7.5,
-            "axes.titlesize": 8.5,
-            "axes.titleweight": "semibold",
-            "axes.linewidth": 0.7,
-            "pdf.fonttype": 42,
-            "ps.fonttype": 42,
-        }
+    axis.text(
+        0.0,
+        .965,
+        "Classification of final output; not a candidate-generation or filtering funnel",
+        transform=axis.transAxes,
+        ha="left",
+        va="top",
+        fontsize=8.4 if standalone else 6.0,
+        color="#444444",
     )
+    draw_box(
+        axis,
+        (0.34, 0.79),
+        0.32,
+        0.12,
+        f"Final Columba PAF records\n{final_count:,}",
+        "#F2F2F2",
+        "#777777",
+        box_font,
+    )
+    draw_box(
+        axis,
+        (0.31, 0.58),
+        0.38,
+        0.12,
+        f"Independently alignment-valid\n{oracle_valid:,}",
+        "#E8F3F8",
+        COLUMBA_COLOR,
+        box_font,
+    )
+    draw_box(
+        axis,
+        (0.34, 0.37),
+        0.32,
+        0.12,
+        f"Requested-GG/oracle-valid loci\n{gg_valid:,}",
+        "#D9EEF8",
+        COLUMBA_COLOR,
+        box_font,
+    )
+    draw_arrow(axis, (0.50, 0.79), (0.50, 0.70), 10 if standalone else 8)
+    draw_arrow(axis, (0.50, 0.58), (0.50, 0.49), 10 if standalone else 8)
+    axis.text(
+        0.76,
+        0.63,
+        f"{invalid:,} invalid",
+        transform=axis.transAxes,
+        ha="left",
+        fontsize=8.2 if standalone else 6.2,
+        color="#555555",
+    )
+    axis.text(
+        0.76,
+        0.42,
+        f"{non_gg:,} non-GG",
+        transform=axis.transAxes,
+        ha="left",
+        fontsize=8.2 if standalone else 6.2,
+        color="#555555",
+    )
+
+    draw_box(
+        axis,
+        (0.03, 0.07),
+        0.39,
+        0.16,
+        f"Shared baseline loci\n{shared:,}",
+        "#E1E1E1",
+        BASELINE_COLOR,
+        box_font,
+    )
+    draw_box(
+        axis,
+        (0.52, 0.07),
+        0.45,
+        0.16,
+        f"Additional oracle-valid\nColumba candidate loci\n{columba_only:,}",
+        "#D9EEF8",
+        COLUMBA_COLOR,
+        box_font,
+    )
+    draw_arrow(axis, (0.44, 0.37), (0.25, 0.23), 10 if standalone else 8)
+    draw_arrow(axis, (0.56, 0.37), (0.74, 0.23), 10 if standalone else 8)
+
+
+def save_figure(figure, pdf_path: Path, png_path: Path, subject: str) -> None:
+    pdf_metadata = {
+        "Title": subject,
+        "Subject": subject,
+        "Creator": "make_figure4.py",
+        "CreationDate": None,
+        "ModDate": None,
+    }
+    figure.savefig(pdf_path, format="pdf", metadata=pdf_metadata, facecolor="white")
+    figure.savefig(
+        png_path,
+        format="png",
+        dpi=320,
+        metadata={"Software": "make_figure4.py"},
+        facecolor="white",
+    )
+    plt.close(figure)
+
+
+def render_combined(rows: list[dict[str, str]], counts: dict[str, int]) -> None:
+    apply_style(standalone=False)
     figure, axes = plt.subplots(2, 2, figsize=(8.3, 6.2))
-    figure.subplots_adjust(left=0.083, right=0.985, bottom=0.11, top=0.94, wspace=0.33, hspace=0.47)
+    figure.subplots_adjust(
+        left=0.083,
+        right=0.985,
+        bottom=0.105,
+        top=0.94,
+        wspace=0.33,
+        hspace=0.49,
+    )
     axis_a, axis_b, axis_c, axis_d = axes.flat
     for axis in (axis_a, axis_b, axis_c):
         configure_axis(axis)
@@ -346,29 +527,77 @@ def render(rows: list[dict[str, str]], counts: dict[str, int]) -> None:
             ha="left",
         )
 
-    pdf_metadata = {
-        "Title": "Figure 4: Characterization of Columba-reported candidate loci",
-        "Subject": "Edit events, PAMs, CFD scores, and post-output classification",
-        "Creator": "make_figure4.py",
-        "CreationDate": None,
-        "ModDate": None,
-    }
-    figure.savefig(PDF_PATH, format="pdf", metadata=pdf_metadata, facecolor="white")
-    figure.savefig(
+    save_figure(
+        figure,
+        PDF_PATH,
         PNG_PATH,
-        format="png",
-        dpi=320,
-        metadata={"Software": "make_figure4.py"},
-        facecolor="white",
+        "Figure 4: Characterization of Columba-reported candidate loci",
     )
-    plt.close(figure)
+
+
+def render_standalone(
+    rows: list[dict[str, str]],
+    counts: dict[str, int],
+    panel_name: str,
+    render_panel,
+    figsize: tuple[float, float],
+    margins: dict[str, float],
+) -> tuple[Path, Path]:
+    apply_style(standalone=True)
+    figure, axis = plt.subplots(figsize=figsize)
+    figure.subplots_adjust(**margins)
+    if panel_name != "panelD_post_output_classification":
+        configure_axis(axis)
+    if panel_name == "panelD_post_output_classification":
+        render_panel(axis, rows, counts, standalone=True)
+    else:
+        render_panel(axis, rows, standalone=True)
+    pdf_path = PANEL_DIR / f"{panel_name}.pdf"
+    png_path = PANEL_DIR / f"{panel_name}.png"
+    save_figure(figure, pdf_path, png_path, panel_name.replace("_", " "))
+    return pdf_path, png_path
+
+
+def render_all(rows: list[dict[str, str]], counts: dict[str, int]) -> list[Path]:
+    PANEL_DIR.mkdir(parents=True, exist_ok=True)
+    render_combined(rows, counts)
+    outputs = [PDF_PATH, PNG_PATH]
+    standalone_specs = [
+        (
+            "panelA_edit_event_composition",
+            panel_a,
+            (6.8, 4.5),
+            {"left": 0.12, "right": 0.98, "bottom": 0.25, "top": 0.87},
+        ),
+        (
+            "panelB_pam_distribution",
+            panel_b,
+            (6.8, 4.2),
+            {"left": 0.12, "right": 0.98, "bottom": 0.18, "top": 0.90},
+        ),
+        (
+            "panelC_edit_distance",
+            panel_c,
+            (6.2, 4.3),
+            {"left": 0.13, "right": 0.98, "bottom": 0.14, "top": 0.86},
+        ),
+        (
+            "panelD_post_output_classification",
+            panel_d,
+            (6.6, 4.8),
+            {"left": 0.05, "right": 0.97, "bottom": 0.06, "top": 0.89},
+        ),
+    ]
+    for spec in standalone_specs:
+        outputs.extend(render_standalone(rows, counts, *spec))
+    return outputs
 
 
 def main() -> None:
     rows = read_tsv(SOURCE_DATA_PATH)
     counts = validate_source(rows)
-    render(rows, counts)
-    for path in (PDF_PATH, PNG_PATH):
+    outputs = render_all(rows, counts)
+    for path in outputs:
         if not path.is_file() or path.stat().st_size == 0:
             raise RuntimeError(f"Missing or empty output: {path}")
         print(f"wrote {path.relative_to(REPO_ROOT)}")
