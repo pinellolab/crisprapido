@@ -1,0 +1,13 @@
+guide_id	guide_sequence	reference_name	reference_start_0based	reference_end_0based	strand	expected_mismatches	expected_cigar	expected_alignment_class	expected_pam	mutation_positions_1based	oriented_target_sequence	accepted_m1	accepted_m2	accepted_m3	control_role	flank_salt
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	exact_forward	16	36	+	0	20=	exact	GG	none	GAGTCCGAGCAGAAGAAGAA	yes	yes	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	exact_reverse	18	38	-	0	20=	exact	GG	none	GAGTCCGAGCAGAAGAAGAA	yes	yes	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch1_forward_pos3	16	36	+	1	2=1X17=	substitution	GG	3	GATTCCGAGCAGAAGAAGAA	yes	yes	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch1_forward_pos10	16	36	+	1	9=1X10=	substitution	GG	10	GAGTCCGAGGAGAAGAAGAA	yes	yes	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch1_reverse_pos17	18	38	-	1	16=1X3=	substitution	GG	17	GAGTCCGAGCAGAAGACGAA	yes	yes	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch2_forward_pos5_15	16	36	+	2	4=1X9=1X5=	substitution	GG	5,15	GAGTGCGAGCAGAATAAGAA	no	yes	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch2_forward_pos1_20	16	36	+	2	1X18=1X	substitution	GG	1,20	TAGTCCGAGCAGAAGAAGAC	no	yes	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch2_reverse_pos4_17	18	38	-	2	3=1X12=1X3=	substitution	GG	4,17	GAGACCGAGCAGAAGACGAA	no	yes	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch3_forward_pos2_10_19	16	36	+	3	1=1X7=1X8=1X1=	substitution	GG	2,10,19	GCGTCCGAGGAGAAGAAGCA	no	no	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch3_reverse_pos6_12_18	18	38	-	3	5=1X5=1X5=1X2=	substitution	GG	6,12,18	GAGTCGGAGCATAAGAATAA	no	no	yes	expected	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch4_negative_forward	16	36	+	4	1=1X4=1X5=1X5=1X1=	substitution	GG	2,7,13,19	GCGTCCTAGCAGCAGAAGCA	no	no	no	negative_outside_m3	0
+mismatch_guide	GAGTCCGAGCAGAAGAAGAA	mismatch4_negative_reverse	18	38	-	4	2=1X4=1X5=1X5=1X	substitution	GG	3,8,14,20	GATTCCGCGCAGACGAAGAC	no	no	no	negative_outside_m3	0

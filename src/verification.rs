@@ -389,6 +389,33 @@ fn verify_columba_candidates_impl(
             guide_fwd,
             args,
         );
+        let terminal_mismatch_interval = if primary_hit.is_none() {
+            terminal_insertion_substitution_interval(
+                candidate.reference_start,
+                candidate_end,
+                &candidate.cigar,
+                seq.len(),
+                guide_fwd.len(),
+                args.max_mismatches,
+                args.max_bulges,
+            )
+        } else {
+            None
+        };
+        let internal_mismatch_intervals =
+            if primary_hit.is_none() && terminal_mismatch_interval.is_none() {
+                internal_insertion_substitution_intervals(
+                    candidate.reference_start,
+                    candidate_end,
+                    &candidate.cigar,
+                    seq.len(),
+                    guide_fwd.len(),
+                    args.max_mismatches,
+                    args.max_bulges,
+                )
+            } else {
+                Vec::new()
+            };
         let mut recovered = false;
         let should_expand = match primary_hit {
             Some(hit) => {
@@ -407,6 +434,48 @@ fn verify_columba_candidates_impl(
                 args.max_bulges > 0 && args.max_bulge_size > 0
             }
         };
+
+        if let Some((start, end)) = terminal_mismatch_interval {
+            stats.expansion_triggers += 1;
+            stats.raw_alternatives_generated += 1;
+            stats.unique_alternatives_verified += 1;
+            if let Some(hit) = verify_columba_interval(
+                &mut aligner,
+                record_id,
+                seq,
+                start,
+                end,
+                candidate.reverse,
+                guide_fwd,
+                args,
+            ) {
+                stats.fallback_hits_accepted += 1;
+                push_unique_hit(hit, &mut hits, &mut seen_hits, &mut stats);
+                recovered = true;
+            }
+        }
+
+        if !internal_mismatch_intervals.is_empty() {
+            stats.expansion_triggers += 1;
+            stats.raw_alternatives_generated += internal_mismatch_intervals.len();
+            for (start, end) in internal_mismatch_intervals {
+                stats.unique_alternatives_verified += 1;
+                if let Some(hit) = verify_columba_interval(
+                    &mut aligner,
+                    record_id,
+                    seq,
+                    start,
+                    end,
+                    candidate.reverse,
+                    guide_fwd,
+                    args,
+                ) {
+                    stats.fallback_hits_accepted += 1;
+                    push_unique_hit(hit, &mut hits, &mut seen_hits, &mut stats);
+                    recovered = true;
+                }
+            }
+        }
 
         if should_expand {
             stats.expansion_triggers += 1;
@@ -512,6 +581,130 @@ fn verify_columba_interval(
         0,
         args,
     ))
+}
+
+// Columba can encode terminal substitutions as query insertions on a shorter span.
+// Recover only that implied full-guide interval; WFA2 remains authoritative.
+fn terminal_insertion_substitution_interval(
+    original_start: usize,
+    original_end: usize,
+    cigar: &str,
+    contig_len: usize,
+    guide_len: usize,
+    max_mismatches: u32,
+    max_bulges: u32,
+) -> Option<(usize, usize)> {
+    if max_mismatches == 0 || max_bulges != 0 {
+        return None;
+    }
+
+    let operations = cigar_operations(cigar)?;
+    if operations.len() < 2 {
+        return None;
+    }
+
+    let last_index = operations.len() - 1;
+    let leading_insertions = match operations.first() {
+        Some((length, 'I')) => *length,
+        _ => 0,
+    };
+    let trailing_insertions = match operations.last() {
+        Some((length, 'I')) => *length,
+        _ => 0,
+    };
+    let terminal_insertions = leading_insertions.checked_add(trailing_insertions)?;
+    if terminal_insertions == 0 || terminal_insertions > max_mismatches as usize {
+        return None;
+    }
+
+    for (index, (_, op)) in operations.iter().enumerate() {
+        match op {
+            'M' | '=' | 'X' => {}
+            'I' if index == 0 || index == last_index => {}
+            _ => return None,
+        }
+    }
+
+    let original_span = original_end.checked_sub(original_start)?;
+    if original_span.checked_add(terminal_insertions)? != guide_len {
+        return None;
+    }
+
+    let start = original_start.checked_sub(leading_insertions)?;
+    let end = original_end.checked_add(trailing_insertions)?;
+    if end > contig_len {
+        return None;
+    }
+
+    Some((start, end))
+}
+
+// Columba can also encode a substitution as an internal query insertion on a
+// shorter span. Test only the full-guide intervals containing that span; the
+// end-to-end WFA2 filter still requires a mismatch-only alignment.
+fn internal_insertion_substitution_intervals(
+    original_start: usize,
+    original_end: usize,
+    cigar: &str,
+    contig_len: usize,
+    guide_len: usize,
+    max_mismatches: u32,
+    max_bulges: u32,
+) -> Vec<(usize, usize)> {
+    if max_mismatches == 0 || max_bulges != 0 {
+        return Vec::new();
+    }
+
+    let Some(operations) = cigar_operations(cigar) else {
+        return Vec::new();
+    };
+    if operations.len() < 3 {
+        return Vec::new();
+    }
+
+    let last_index = operations.len() - 1;
+    let mut insertion_bases = 0usize;
+    let mut has_internal_insertion = false;
+    for (index, (length, op)) in operations.iter().enumerate() {
+        match op {
+            'M' | '=' | 'X' => {}
+            'I' => {
+                let Some(total) = insertion_bases.checked_add(*length) else {
+                    return Vec::new();
+                };
+                insertion_bases = total;
+                has_internal_insertion |= index != 0 && index != last_index;
+            }
+            _ => return Vec::new(),
+        }
+    }
+
+    let original_span = match original_end.checked_sub(original_start) {
+        Some(span) => span,
+        None => return Vec::new(),
+    };
+    if !has_internal_insertion
+        || insertion_bases == 0
+        || insertion_bases > max_mismatches as usize
+        || original_span.checked_add(insertion_bases) != Some(guide_len)
+    {
+        return Vec::new();
+    }
+
+    let mut intervals = Vec::new();
+    for left_extension in 0..=insertion_bases {
+        let right_extension = insertion_bases - left_extension;
+        let Some(start) = original_start.checked_sub(left_extension) else {
+            continue;
+        };
+        let Some(end) = original_end.checked_add(right_extension) else {
+            continue;
+        };
+        if end <= contig_len {
+            intervals.push((start, end));
+        }
+    }
+    intervals
 }
 
 fn fallback_intervals(
@@ -1389,6 +1582,64 @@ mod tests {
         assert_eq!(stats.primary_rejected, 1);
         assert_eq!(stats.expansion_triggers, 0);
         assert_eq!(stats.unique_alternatives_verified, 0);
+    }
+
+    #[test]
+    fn test_terminal_columba_insertions_recover_as_substitutions_without_bulges() {
+        let guide = "GAGTCCGAGCAGAAGAAGAA";
+        let mut seq = b"ACGTCAGTACGTACGA".to_vec();
+        seq.extend_from_slice(b"TAGTCCGAGCAGAAGAAGAC");
+        seq.extend_from_slice(b"GGTGCATGCATGCATG");
+        let candidate =
+            parse_candidate("guide\t256\tchr1\t18\t0\t1I18M1I\t*\t0\t0\t*\t*\tAS:i:2\tNM:i:2");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 2, 0, 0, vec![candidate], seq);
+
+        assert_eq!(stats.primary_rejected, 1);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert_eq!(stats.unique_alternatives_verified, 1);
+        assert_eq!(stats.fallback_hits_accepted, 1);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].pos, 16);
+        assert_eq!(hits[0].end_pos(), 36);
+        assert_eq!(hits[0].pam_seq.as_deref(), Some("GG"));
+        assert_eq!(
+            cigar_test_counts(&hits[0].cigar, guide.as_bytes()),
+            (18, 2, 0, 0)
+        );
+        assert!(hits[0].cigar.starts_with('X'));
+        assert!(hits[0].cigar.ends_with('X'));
+    }
+
+    #[test]
+    fn test_internal_columba_insertion_recovers_as_substitutions_without_bulges() {
+        let guide = "AACGGCTCAATCAAAACAAA";
+        let target = b"AACTGCTCAATCAAAAAAAA";
+        let mut seq = b"TT".to_vec();
+        seq.extend_from_slice(target);
+        seq.extend_from_slice(b"GG");
+        let candidate =
+            parse_candidate("guide\t0\tchr1\t3\t0\t16M1I3M\t*\t0\t0\t*\t*\tAS:i:2\tNM:i:2");
+
+        let (hits, stats) =
+            verify_candidates_with_stats_for_test(guide, 2, 0, 0, vec![candidate], seq);
+
+        assert_eq!(stats.primary_rejected, 1);
+        assert_eq!(stats.expansion_triggers, 1);
+        assert_eq!(stats.raw_alternatives_generated, 2);
+        assert_eq!(stats.unique_alternatives_verified, 2);
+        assert_eq!(stats.fallback_hits_accepted, 1);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].pos, 2);
+        assert_eq!(hits[0].end_pos(), 22);
+        assert_eq!(hits[0].pam_seq.as_deref(), Some("GG"));
+        assert_eq!(hits[0].target_seq, target);
+        assert_eq!(
+            cigar_test_counts(&hits[0].cigar, guide.as_bytes()),
+            (18, 2, 0, 0)
+        );
+        assert!(!hits[0].cigar.contains('I') && !hits[0].cigar.contains('D'));
     }
 
     #[test]
