@@ -31,6 +31,7 @@ REFERENCE_SCALING_SOURCE = (
 SOURCE_DATA_PATH = FIGURE_DIR / "figure2_source_data.tsv"
 PDF_PATH = FIGURE_DIR / "figure2_performance_scaling.pdf"
 PNG_PATH = FIGURE_DIR / "figure2_performance_scaling.png"
+PANEL_DIR = FIGURE_DIR / "panels"
 
 BASELINE_COLOR = "#4D4D4D"
 COLUMBA_COLOR = "#0072B2"
@@ -324,12 +325,51 @@ def reference_tick_label(row: dict[str, str]) -> str:
     return f"{reference}\n{formatted_length}"
 
 
-def configure_axis(axis: plt.Axes) -> None:
+def apply_style(standalone: bool = False) -> None:
+    base = 9.5 if standalone else 7.5
+    plt.rcParams.update(
+        {
+            "font.family": "DejaVu Sans",
+            "font.size": base,
+            "axes.labelsize": base,
+            "axes.titlesize": 11.0 if standalone else 8.5,
+            "axes.titleweight": "semibold",
+            "axes.linewidth": 0.7,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+        }
+    )
+
+
+def mode_legend_handles(standalone: bool = False) -> list[Line2D]:
+    return [
+        Line2D(
+            [0],
+            [0],
+            color=MODE_STYLE[mode]["color"],
+            marker=MODE_STYLE[mode]["marker"],
+            markersize=6 if standalone else 5,
+            markeredgecolor="white",
+            markeredgewidth=0.7,
+            linewidth=1.45,
+            label=MODE_STYLE[mode]["label"],
+        )
+        for mode in MODE_STYLE
+    ]
+
+
+def configure_axis(axis: plt.Axes, standalone: bool = False) -> None:
     axis.spines["top"].set_visible(False)
     axis.spines["right"].set_visible(False)
     axis.spines["left"].set_color("#555555")
     axis.spines["bottom"].set_color("#555555")
-    axis.tick_params(axis="both", which="major", labelsize=7, length=3, width=0.7)
+    axis.tick_params(
+        axis="both",
+        which="major",
+        labelsize=8.8 if standalone else 7,
+        length=3,
+        width=0.7,
+    )
     axis.tick_params(axis="both", which="minor", length=0)
     axis.grid(axis="y", which="major", color="#E2E2E2", linewidth=0.55)
     axis.set_axisbelow(True)
@@ -379,6 +419,7 @@ def annotate_ratios(
     x_field: str,
     y_field: str,
     ratio_field: str | None = None,
+    standalone: bool = False,
 ) -> None:
     for baseline_row, columba_row in zip(baseline, columba, strict=True):
         baseline_value = float(baseline_row[y_field])
@@ -394,134 +435,127 @@ def annotate_ratios(
             f"{ratio:.1f}x",
             ha="center",
             va="center",
-            fontsize=6.2,
+            fontsize=8.2 if standalone else 6.2,
             color="#333333",
             bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.7, "alpha": 0.9},
             zorder=4,
         )
 
 
-def render_figure(records: list[dict[str, str]]) -> None:
-    plt.rcParams.update(
-        {
-            "font.family": "DejaVu Sans",
-            "font.size": 7.5,
-            "axes.labelsize": 7.5,
-            "axes.titlesize": 8.5,
-            "axes.titleweight": "semibold",
-            "axes.linewidth": 0.7,
-            "pdf.fonttype": 42,
-            "ps.fonttype": 42,
-        }
+def render_guide_count_panel(
+    axis: plt.Axes, records: list[dict[str, str]], standalone: bool = False
+) -> None:
+    baseline = records_for(records, "chr22_guide_count_scaling", "baseline")
+    columba = records_for(records, "chr22_guide_count_scaling", "columba")
+    plot_series(axis, baseline, "guide_count", "wall_seconds", "baseline")
+    plot_series(axis, columba, "guide_count", "wall_seconds", "columba")
+    axis.set_xscale("log")
+    axis.set_yscale("log")
+    axis.set_xlim(15, 650)
+    axis.set_ylim(5, 30_000)
+    axis.set_xticks([20, 100, 500])
+    axis.set_xticklabels(["20", "100", "500"])
+    axis.xaxis.set_minor_formatter(NullFormatter())
+    axis.yaxis.set_major_formatter(FuncFormatter(compact_log_tick))
+    axis.set_xlabel("Number of guides")
+    axis.set_ylabel("Wall time (s, log scale)")
+    axis.set_title("Guide-count scaling (chr22)", loc="left", pad=6)
+    annotate_ratios(
+        axis,
+        baseline,
+        columba,
+        "guide_count",
+        "wall_seconds",
+        "observed_speedup",
+        standalone,
     )
+    if standalone:
+        axis.legend(handles=mode_legend_handles(standalone=True), loc="upper left", frameon=False)
+
+
+def render_reference_size_panel(
+    axis: plt.Axes, records: list[dict[str, str]], standalone: bool = False
+) -> None:
+    baseline = records_for(records, "matched_reference_size_scaling", "baseline")
+    columba = records_for(records, "matched_reference_size_scaling", "columba")
+    labels = [reference_tick_label(row) for row in baseline]
+    lengths = [float(row["reference_length_bp"]) for row in baseline]
+    plot_series(
+        axis, baseline, "reference_length_bp", "seconds_per_guide", "baseline"
+    )
+    plot_series(
+        axis, columba, "reference_length_bp", "seconds_per_guide", "columba"
+    )
+    axis.set_xscale("log")
+    axis.set_yscale("log")
+    axis.set_xlim(35_000_000, 4_500_000_000)
+    axis.set_ylim(0.5, 3_000)
+    axis.set_xticks(lengths)
+    axis.set_xticklabels(labels)
+    axis.xaxis.set_minor_formatter(NullFormatter())
+    axis.yaxis.set_major_formatter(FuncFormatter(compact_log_tick))
+    axis.set_xlabel("Reference length")
+    axis.set_ylabel("Wall time per guide (s, log scale)")
+    axis.set_title("Reference-size scaling (tux05)", loc="left", pad=6)
+    annotate_ratios(
+        axis,
+        baseline,
+        columba,
+        "reference_length_bp",
+        "seconds_per_guide",
+        "observed_speedup",
+        standalone,
+    )
+    if standalone:
+        axis.legend(handles=mode_legend_handles(standalone=True), loc="upper left", frameon=False)
+
+
+def render_memory_panel(
+    axis: plt.Axes, records: list[dict[str, str]], standalone: bool = False
+) -> None:
+    baseline = records_for(records, "matched_reference_size_scaling", "baseline")
+    columba = records_for(records, "matched_reference_size_scaling", "columba")
+    labels = [reference_tick_label(row) for row in baseline]
+    lengths = [float(row["reference_length_bp"]) for row in baseline]
+    plot_series(axis, baseline, "reference_length_bp", "peak_rss_gib", "baseline")
+    plot_series(axis, columba, "reference_length_bp", "peak_rss_gib", "columba")
+    axis.set_xscale("log")
+    axis.set_yscale("log")
+    axis.set_xlim(35_000_000, 4_500_000_000)
+    axis.set_ylim(0.08, 22)
+    axis.set_xticks(lengths)
+    axis.set_xticklabels(labels)
+    axis.xaxis.set_minor_formatter(NullFormatter())
+    axis.yaxis.set_major_formatter(FuncFormatter(compact_log_tick))
+    axis.set_xlabel("Reference length")
+    axis.set_ylabel("Peak RSS (GiB, log scale)")
+    axis.set_title("Peak memory (tux05)", loc="left", pad=6)
+    annotate_ratios(
+        axis,
+        baseline,
+        columba,
+        "reference_length_bp",
+        "peak_rss_gib",
+        None,
+        standalone,
+    )
+    if standalone:
+        axis.legend(handles=mode_legend_handles(standalone=True), loc="upper left", frameon=False)
+
+
+def render_figure(records: list[dict[str, str]]) -> None:
+    apply_style(standalone=False)
 
     figure, axes = plt.subplots(1, 3, figsize=(8.3, 3.6))
     figure.subplots_adjust(left=0.073, right=0.99, bottom=0.29, top=0.80, wspace=0.43)
-
-    guide_baseline = records_for(records, "chr22_guide_count_scaling", "baseline")
-    guide_columba = records_for(records, "chr22_guide_count_scaling", "columba")
-    reference_baseline = records_for(
-        records, "matched_reference_size_scaling", "baseline"
-    )
-    reference_columba = records_for(
-        records, "matched_reference_size_scaling", "columba"
-    )
 
     axis_a, axis_b, axis_c = axes
     for axis in axes:
         configure_axis(axis)
 
-    plot_series(axis_a, guide_baseline, "guide_count", "wall_seconds", "baseline")
-    plot_series(axis_a, guide_columba, "guide_count", "wall_seconds", "columba")
-    axis_a.set_xscale("log")
-    axis_a.set_yscale("log")
-    axis_a.set_xlim(15, 650)
-    axis_a.set_ylim(5, 30_000)
-    axis_a.set_xticks([20, 100, 500])
-    axis_a.set_xticklabels(["20", "100", "500"])
-    axis_a.xaxis.set_minor_formatter(NullFormatter())
-    axis_a.yaxis.set_major_formatter(FuncFormatter(compact_log_tick))
-    axis_a.set_xlabel("Number of guides")
-    axis_a.set_ylabel("Wall time (s, log scale)")
-    axis_a.set_title("Guide-count scaling (chr22)", loc="left", pad=6)
-    annotate_ratios(
-        axis_a,
-        guide_baseline,
-        guide_columba,
-        "guide_count",
-        "wall_seconds",
-        "observed_speedup",
-    )
-
-    reference_labels = [reference_tick_label(row) for row in reference_baseline]
-    reference_lengths = [float(row["reference_length_bp"]) for row in reference_baseline]
-
-    plot_series(
-        axis_b,
-        reference_baseline,
-        "reference_length_bp",
-        "seconds_per_guide",
-        "baseline",
-    )
-    plot_series(
-        axis_b,
-        reference_columba,
-        "reference_length_bp",
-        "seconds_per_guide",
-        "columba",
-    )
-    axis_b.set_xscale("log")
-    axis_b.set_yscale("log")
-    axis_b.set_xlim(35_000_000, 4_500_000_000)
-    axis_b.set_ylim(0.5, 3_000)
-    axis_b.set_xticks(reference_lengths)
-    axis_b.set_xticklabels(reference_labels)
-    axis_b.xaxis.set_minor_formatter(NullFormatter())
-    axis_b.yaxis.set_major_formatter(FuncFormatter(compact_log_tick))
-    axis_b.set_xlabel("Reference length")
-    axis_b.set_ylabel("Wall time per guide (s, log scale)")
-    axis_b.set_title("Reference-size scaling (tux05)", loc="left", pad=6)
-    annotate_ratios(
-        axis_b,
-        reference_baseline,
-        reference_columba,
-        "reference_length_bp",
-        "seconds_per_guide",
-        "observed_speedup",
-    )
-
-    plot_series(
-        axis_c,
-        reference_baseline,
-        "reference_length_bp",
-        "peak_rss_gib",
-        "baseline",
-    )
-    plot_series(
-        axis_c,
-        reference_columba,
-        "reference_length_bp",
-        "peak_rss_gib",
-        "columba",
-    )
-    axis_c.set_xscale("log")
-    axis_c.set_yscale("log")
-    axis_c.set_xlim(35_000_000, 4_500_000_000)
-    axis_c.set_ylim(0.08, 22)
-    axis_c.set_xticks(reference_lengths)
-    axis_c.set_xticklabels(reference_labels)
-    axis_c.xaxis.set_minor_formatter(NullFormatter())
-    axis_c.yaxis.set_major_formatter(FuncFormatter(compact_log_tick))
-    axis_c.set_xlabel("Reference length")
-    axis_c.set_ylabel("Peak RSS (GiB, log scale)")
-    axis_c.set_title("Peak memory (tux05)", loc="left", pad=6)
-    annotate_ratios(
-        axis_c,
-        reference_baseline,
-        reference_columba,
-        "reference_length_bp",
-        "peak_rss_gib",
-    )
+    render_guide_count_panel(axis_a, records)
+    render_reference_size_panel(axis_b, records)
+    render_memory_panel(axis_c, records)
 
     for label, axis in zip(("A", "B", "C"), axes, strict=True):
         axis.text(
@@ -535,20 +569,7 @@ def render_figure(records: list[dict[str, str]]) -> None:
             ha="left",
         )
 
-    legend_handles = [
-        Line2D(
-            [0],
-            [0],
-            color=MODE_STYLE[mode]["color"],
-            marker=MODE_STYLE[mode]["marker"],
-            markersize=5,
-            markeredgecolor="white",
-            markeredgewidth=0.7,
-            linewidth=1.45,
-            label=MODE_STYLE[mode]["label"],
-        )
-        for mode in MODE_STYLE
-    ]
+    legend_handles = mode_legend_handles()
     figure.legend(
         handles=legend_handles,
         loc="upper center",
@@ -599,16 +620,95 @@ def render_figure(records: list[dict[str, str]]) -> None:
     plt.close(figure)
 
 
+def save_standalone(
+    figure: plt.Figure, name: str, subject: str
+) -> tuple[Path, Path]:
+    pdf_path = PANEL_DIR / f"{name}.pdf"
+    png_path = PANEL_DIR / f"{name}.png"
+    metadata = {
+        "Title": subject,
+        "Subject": subject,
+        "Creator": "make_figure2.py",
+        "CreationDate": None,
+        "ModDate": None,
+    }
+    figure.savefig(pdf_path, format="pdf", metadata=metadata, facecolor="white")
+    figure.savefig(
+        png_path,
+        format="png",
+        dpi=320,
+        metadata={"Software": "make_figure2.py"},
+        facecolor="white",
+    )
+    plt.close(figure)
+    return pdf_path, png_path
+
+
+def render_standalone_panel(
+    records: list[dict[str, str]],
+    name: str,
+    subject: str,
+    renderer,
+    note: str,
+) -> tuple[Path, Path]:
+    apply_style(standalone=True)
+    figure, axis = plt.subplots(figsize=(6.4, 4.6))
+    figure.subplots_adjust(left=0.14, right=0.98, bottom=0.25, top=0.88)
+    configure_axis(axis, standalone=True)
+    renderer(axis, records, standalone=True)
+    figure.text(
+        0.14,
+        0.045,
+        note,
+        ha="left",
+        va="bottom",
+        fontsize=7.8,
+        color="#333333",
+    )
+    return save_standalone(figure, name, subject)
+
+
+def render_standalone_panels(records: list[dict[str, str]]) -> list[Path]:
+    PANEL_DIR.mkdir(parents=True, exist_ok=True)
+    outputs: list[Path] = []
+    specs = [
+        (
+            "panelA_guide_count_scaling",
+            "Figure 2A: Guide-count scaling on chr22",
+            render_guide_count_panel,
+            "20/100 guides: medians of three runs per mode.\n"
+            "500 guides: one baseline run and median of three Columba runs.",
+        ),
+        (
+            "panelB_reference_size_scaling",
+            "Figure 2B: Matched-node reference-size scaling",
+            render_reference_size_panel,
+            "Matched tux05 runs. chr22/chr2: baseline n=1, Columba median n=3.\n"
+            "Whole genome: baseline n=1, median of two sequential warm-cache Columba runs.",
+        ),
+        (
+            "panelC_memory_scaling",
+            "Figure 2C: Matched-node peak memory scaling",
+            render_memory_panel,
+            "Matched tux05 runs. Peak aggregate RSS; ratios are Columba/baseline.\n"
+            "Whole-genome Columba value uses two sequential warm-cache replicates.",
+        ),
+    ]
+    for spec in specs:
+        outputs.extend(render_standalone_panel(records, *spec))
+    return outputs
+
+
 def main() -> None:
     records = build_source_data()
     write_source_data(records)
     render_figure(records)
-    for path in (SOURCE_DATA_PATH, PDF_PATH, PNG_PATH):
-        if not path.is_file() or path.stat().st_size == 0:
-            raise RuntimeError(f"Missing or empty output: {path}")
-    print(f"wrote {SOURCE_DATA_PATH.relative_to(REPO_ROOT)}")
-    print(f"wrote {PDF_PATH.relative_to(REPO_ROOT)}")
-    print(f"wrote {PNG_PATH.relative_to(REPO_ROOT)}")
+    outputs = [SOURCE_DATA_PATH, PDF_PATH, PNG_PATH]
+    outputs.extend(render_standalone_panels(records))
+    for output in outputs:
+        if not output.is_file() or output.stat().st_size == 0:
+            raise RuntimeError(f"Missing or empty output: {output}")
+        print(f"wrote {output.relative_to(REPO_ROOT)}")
 
 
 if __name__ == "__main__":

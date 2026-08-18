@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+from matplotlib.text import Text
 
 
 FIGURE_DIR = Path(__file__).resolve().parent
@@ -20,6 +21,7 @@ PERFORMANCE_DIR = REPO_ROOT / "benchmark" / "performance"
 SOURCE_DATA_PATH = FIGURE_DIR / "figure1_source_data.tsv"
 PDF_PATH = FIGURE_DIR / "figure1_correctness.pdf"
 PNG_PATH = FIGURE_DIR / "figure1_correctness.png"
+PANEL_DIR = FIGURE_DIR / "panels"
 
 BASELINE_COLOR = "#4D4D4D"
 COLUMBA_COLOR = "#0072B2"
@@ -406,6 +408,11 @@ def configure_quantitative_axis(axis: plt.Axes) -> None:
     axis.set_axisbelow(True)
 
 
+def scale_panel_typography(axis: plt.Axes, factor: float = 1.35) -> None:
+    for item in axis.findobj(match=Text):
+        item.set_fontsize(item.get_fontsize() * factor)
+
+
 def render_workflow(axis: plt.Axes) -> None:
     axis.set_xlim(0, 1)
     axis.set_ylim(0, 1)
@@ -689,16 +696,93 @@ def render_figure(records: list[dict[str, str]]) -> None:
     plt.close(figure)
 
 
+def save_standalone(
+    figure: plt.Figure, name: str, subject: str
+) -> tuple[Path, Path]:
+    pdf_path = PANEL_DIR / f"{name}.pdf"
+    png_path = PANEL_DIR / f"{name}.png"
+    metadata = {
+        "Title": subject,
+        "Subject": subject,
+        "Creator": "make_figure1.py",
+        "CreationDate": None,
+        "ModDate": None,
+    }
+    figure.savefig(pdf_path, format="pdf", metadata=metadata, facecolor="white")
+    figure.savefig(
+        png_path,
+        format="png",
+        dpi=320,
+        metadata={"Software": "make_figure1.py"},
+        facecolor="white",
+    )
+    plt.close(figure)
+    return pdf_path, png_path
+
+
+def render_standalone_panels(records: list[dict[str, str]]) -> list[Path]:
+    PANEL_DIR.mkdir(parents=True, exist_ok=True)
+    correctness = [
+        row for row in records if row["record_type"] == "correctness_result"
+    ]
+    controlled = next(
+        row for row in records if row["record_type"] == "controlled_result"
+    )
+    whole_genome = next(
+        row
+        for row in correctness
+        if row["reference"] == "CHM13v2_whole_genome"
+    )
+    outputs: list[Path] = []
+
+    figure_a, axis_a = plt.subplots(figsize=(10.0, 4.2))
+    figure_a.subplots_adjust(left=0.035, right=0.99, bottom=0.08, top=0.90)
+    render_workflow(axis_a)
+    scale_panel_typography(axis_a, 1.35)
+    outputs.extend(
+        save_standalone(
+            figure_a,
+            "panelA_workflow",
+            "Figure 1A: CRISPRapido and Columba-enabled workflows",
+        )
+    )
+
+    figure_b, axis_b = plt.subplots(figsize=(6.4, 4.3))
+    figure_b.subplots_adjust(left=0.18, right=0.98, bottom=0.16, top=0.90)
+    render_whole_genome_correctness(axis_b, whole_genome)
+    scale_panel_typography(axis_b, 1.30)
+    outputs.extend(
+        save_standalone(
+            figure_b,
+            "panelB_whole_genome_recovery",
+            "Figure 1B: Whole-genome validated locus recovery",
+        )
+    )
+
+    figure_c, axis_c = plt.subplots(figsize=(7.2, 4.7))
+    figure_c.subplots_adjust(left=0.23, right=0.98, bottom=0.24, top=0.91)
+    render_cross_scale_correctness(axis_c, correctness, controlled)
+    scale_panel_typography(axis_c, 1.30)
+    outputs.extend(
+        save_standalone(
+            figure_c,
+            "panelC_recovery_across_benchmarks",
+            "Figure 1C: Correctness across benchmark scales",
+        )
+    )
+    return outputs
+
+
 def main() -> None:
     records = build_source_data()
     write_source_data(records)
     render_figure(records)
-    for path in (SOURCE_DATA_PATH, PDF_PATH, PNG_PATH):
-        if not path.is_file() or path.stat().st_size == 0:
-            raise RuntimeError(f"Missing or empty output: {path}")
-    print(f"wrote {SOURCE_DATA_PATH.relative_to(REPO_ROOT)}")
-    print(f"wrote {PDF_PATH.relative_to(REPO_ROOT)}")
-    print(f"wrote {PNG_PATH.relative_to(REPO_ROOT)}")
+    outputs = [SOURCE_DATA_PATH, PDF_PATH, PNG_PATH]
+    outputs.extend(render_standalone_panels(records))
+    for output in outputs:
+        if not output.is_file() or output.stat().st_size == 0:
+            raise RuntimeError(f"Missing or empty output: {output}")
+        print(f"wrote {output.relative_to(REPO_ROOT)}")
 
 
 if __name__ == "__main__":

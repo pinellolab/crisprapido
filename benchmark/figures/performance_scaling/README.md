@@ -10,7 +10,14 @@ TSVs. It does not read raw benchmark output or run CRISPRapido or Columba.
 - `figure2_source_data.tsv`: one row per plotted mode and experiment, including
   source-file and source-row provenance.
 - `make_figure2.py`: deterministic source-data extraction, validation, and
-  plotting script.
+  plotting script. One invocation produces both the combined figure and all
+  standalone panels.
+- `panels/panelA_guide_count_scaling.pdf` and `.png`: standalone chr22
+  guide-count scaling.
+- `panels/panelB_reference_size_scaling.pdf` and `.png`: standalone matched-node
+  reference-size scaling.
+- `panels/panelC_memory_scaling.pdf` and `.png`: standalone matched-node peak
+  memory scaling.
 
 ## Source artifacts
 
@@ -83,3 +90,22 @@ whole-genome result compares one baseline replicate with the median of two
 sequential warm-cache Columba replicates. Ratio labels show observed speedup
 in A-B and Columba/baseline memory ratio in C. No confidence intervals are
 implied; replicate counts are shown beneath the panels.
+
+
+## Standalone panel captions
+
+**Panel A. Guide-count scaling on chr22.** Total wall time for baseline
+CRISPRapido and Columba-enabled CRISPRapido for 20, 100, and 500 guides. Ratio
+labels show the observed baseline/Columba speedup. The 20- and 100-guide values
+are three-run medians; the 500-guide comparison uses one baseline replicate
+and the median of three Columba replicates.
+
+**Panel B. Matched-node reference-size scaling.** Wall time per guide for chr22,
+chr2, and the complete CHM13v2 assembly on `tux05`. The controlled whole-genome
+comparison uses one baseline replicate and the median of two sequential
+warm-cache Columba replicates.
+
+**Panel C. Matched-node peak memory scaling.** Peak aggregate resident memory
+for the same `tux05` experiments. Ratio labels show Columba/baseline memory
+use. The whole-genome Columba value is the median of two sequential warm-cache
+replicates.

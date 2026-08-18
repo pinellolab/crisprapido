@@ -11,7 +11,13 @@ does not run CRISPRapido, Columba, a correctness oracle, or any benchmark.
 - `figure1_source_data.tsv`: workflow provenance and every correctness value
   used by the figure.
 - `make_figure1.py`: deterministic source validation, data extraction, and
-  plotting script.
+  plotting script. One invocation produces both the combined figure and all
+  standalone panels.
+- `panels/panelA_workflow.pdf` and `.png`: standalone integration workflow.
+- `panels/panelB_whole_genome_recovery.pdf` and `.png`: standalone
+  whole-genome recovery result.
+- `panels/panelC_recovery_across_benchmarks.pdf` and `.png`: standalone
+  cross-benchmark recovery result.
 
 ## Panel A: implementation workflow
 
@@ -109,3 +115,23 @@ recovered across five oracle-backed chromosome and whole-genome experiments;
 labels report recovered/baseline-valid counts, missing baseline loci, and
 invalid Columba records. The controlled synthetic suite separately produced
 byte-identical PAF output in all six candidate-matched configurations.
+
+
+## Standalone panel captions
+
+**Panel A. CRISPRapido integration workflow.** The baseline workflow searches
+overlapping reference windows before ends-free WFA2 verification. The
+Columba-enabled workflow obtains edit-distance candidates and SAM-derived
+coordinates before anchored WFA2 verification with bounded fallback. WFA2,
+PAM/CRISPR filtering, CFD scoring, and PAF-style reporting remain downstream.
+
+**Panel B. Whole-genome validated locus recovery.** In the 20-guide CHM13v2
+benchmark, Columba recovered all 127 baseline-valid loci and reported 574
+additional oracle-valid candidate loci, with no independently invalid Columba
+records.
+
+**Panel C. Correctness across benchmark scales.** Columba recovered every
+baseline-valid locus in five oracle-backed chromosome and whole-genome
+experiments, with no independently invalid Columba records. The controlled
+synthetic benchmark separately produced byte-identical PAF output for all six
+candidate-matched configurations.
