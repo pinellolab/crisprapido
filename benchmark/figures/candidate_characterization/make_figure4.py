@@ -23,6 +23,7 @@ BENCHMARK_DIR = (
     / "chm13v2_whole_genome_20_guides"
 )
 SOURCE_DATA_PATH = FIGURE_DIR / "figure4_source_data.tsv"
+MISMATCH_SOURCE_DATA_PATH = FIGURE_DIR / "figure4_mismatch_source_data.tsv"
 SUMMARY_PATH = BENCHMARK_DIR / "correctness_summary.tsv"
 PDF_PATH = FIGURE_DIR / "figure4_candidate_characterization.pdf"
 PNG_PATH = FIGURE_DIR / "figure4_candidate_characterization.png"
@@ -63,6 +64,74 @@ def read_tsv(path: Path) -> list[dict[str, str]]:
     if not rows:
         raise ValueError(f"No rows in {path}")
     return rows
+
+
+def validate_mismatch_source(rows: list[dict[str, str]]) -> dict[int, dict[str, str]]:
+    summaries = {
+        int(row["max_mismatches"]): row
+        for row in rows
+        if row["record_type"] == "summary"
+    }
+    if set(summaries) != {1, 2}:
+        raise ValueError(f"Expected mismatch settings 1 and 2, found {sorted(summaries)}")
+
+    for max_mismatches, summary in summaries.items():
+        if int(summary["max_bulges"]) != 0 or int(summary["max_bulge_size"]) != 0:
+            raise ValueError("Mismatch validation must not allow bulges")
+        baseline = int(summary["baseline_valid_loci"])
+        recovered = int(summary["columba_recovered_baseline_valid_loci"])
+        if baseline != recovered:
+            raise ValueError(f"m={max_mismatches}: {recovered}/{baseline} recovered")
+        for field in (
+            "baseline_missing_loci",
+            "columba_only_valid_loci",
+            "columba_invalid_loci",
+            "baseline_command_failures",
+            "columba_command_failures",
+        ):
+            if int(summary[field]) != 0:
+                raise ValueError(f"m={max_mismatches}: nonzero {field}")
+        if summary["baseline_deterministic"] != "yes" or summary["columba_deterministic"] != "yes":
+            raise ValueError(f"m={max_mismatches}: nondeterministic output")
+
+        mismatch_rows = [
+            row
+            for row in rows
+            if row["record_type"] == "mismatch_count"
+            and int(row["max_mismatches"]) == max_mismatches
+        ]
+        strand_rows = [
+            row
+            for row in rows
+            if row["record_type"] == "strand"
+            and int(row["max_mismatches"]) == max_mismatches
+        ]
+        expected_mismatch_counts = set(range(max_mismatches + 1))
+        observed_mismatch_counts = {int(row["mismatch_count"]) for row in mismatch_rows}
+        if observed_mismatch_counts != expected_mismatch_counts:
+            raise ValueError(
+                f"m={max_mismatches}: mismatch counts {sorted(observed_mismatch_counts)}"
+            )
+        if {row["strand"] for row in strand_rows} != {"+", "-"}:
+            raise ValueError(f"m={max_mismatches}: missing strand summary")
+
+        for grouped_rows, label in ((mismatch_rows, "mismatch"), (strand_rows, "strand")):
+            grouped_baseline = sum(int(row["baseline_valid_loci"]) for row in grouped_rows)
+            grouped_recovered = sum(
+                int(row["columba_recovered_baseline_valid_loci"])
+                for row in grouped_rows
+            )
+            grouped_missing = sum(int(row["baseline_missing_loci"]) for row in grouped_rows)
+            if (grouped_baseline, grouped_recovered, grouped_missing) != (
+                baseline,
+                recovered,
+                0,
+            ):
+                raise ValueError(
+                    f"m={max_mismatches}: inconsistent {label} totals "
+                    f"{grouped_baseline}/{grouped_recovered}/{grouped_missing}"
+                )
+    return summaries
 
 
 def intended_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -289,40 +358,87 @@ def panel_b(axis, rows: list[dict[str, str]], standalone: bool = False) -> None:
         )
 
 
-def panel_c(axis, rows: list[dict[str, str]], standalone: bool = False) -> None:
-    counts = edit_distance_counts(rows)
-    distances = [0, 1, 2]
+def panel_c(
+    axis,
+    mismatch_rows: list[dict[str, str]],
+    standalone: bool = False,
+) -> None:
+    summaries = {
+        int(row["max_mismatches"]): row
+        for row in mismatch_rows
+        if row["record_type"] == "summary"
+    }
+    summary_m2 = summaries[2]
+    summary_m1 = summaries[1]
+    rows_m2 = sorted(
+        (
+            row
+            for row in mismatch_rows
+            if row["record_type"] == "mismatch_count"
+            and int(row["max_mismatches"]) == 2
+        ),
+        key=lambda row: int(row["mismatch_count"]),
+    )
+    positions = [int(row["mismatch_count"]) for row in rows_m2]
+    baseline_values = [int(row["baseline_valid_loci"]) for row in rows_m2]
+    recovered_values = [
+        int(row["columba_recovered_baseline_valid_loci"]) for row in rows_m2
+    ]
     width = 0.36
-    for offset, group in ((-width / 2, "shared_baseline"), (width / 2, "columba_only")):
-        values = [counts[group][distance] for distance in distances]
-        label, color = COMPARISON_STYLE[group]
-        bars = axis.bar(
-            [distance + offset for distance in distances],
-            values,
-            width=width,
-            color=color,
-            edgecolor="white",
-            linewidth=0.5,
-            label=f"{label} (n={sum(values):,})",
-            zorder=3,
-        )
-        annotate_bars(axis, bars, values, 7.5 if standalone else 6.0)
+    baseline_bars = axis.bar(
+        [position - width / 2 for position in positions],
+        baseline_values,
+        width=width,
+        color=BASELINE_COLOR,
+        edgecolor="white",
+        linewidth=0.5,
+        label="Baseline-valid loci",
+        zorder=3,
+    )
+    recovered_bars = axis.bar(
+        [position + width / 2 for position in positions],
+        recovered_values,
+        width=width,
+        color=COLUMBA_COLOR,
+        edgecolor="white",
+        linewidth=0.5,
+        label="Recovered by Columba",
+        zorder=3,
+    )
+    annotate_bars(axis, baseline_bars, baseline_values, 7.5 if standalone else 5.8)
+    annotate_bars(axis, recovered_bars, recovered_values, 7.5 if standalone else 5.8)
 
-    axis.set_xticks(distances, ["0", "1", "2"])
-    axis.set_xlabel("Edit distance")
-    axis.set_ylabel("Number of loci")
-    axis.set_title("Edit-distance composition", loc="left", pad=15 if not standalone else 18)
+    axis.set_yscale("log")
+    axis.set_ylim(1, 2500)
+    axis.set_xticks(positions, [str(position) for position in positions])
+    axis.set_xlabel("Mismatch count")
+    axis.set_ylabel("Number of loci (log scale)")
+    axis.set_title("Real-reference mismatch recovery", loc="left", pad=15 if not standalone else 18)
     axis.legend(loc="upper left", frameon=False)
-    axis.margins(y=0.12)
     axis.text(
         0.0,
         1.015,
-        "m=0; edit distance is driven by indel events",
+        "chr22, 10 guides; m=2, b=0, z=0",
         transform=axis.transAxes,
         ha="left",
         va="bottom",
         fontsize=8.0 if standalone else 6.1,
         color="#444444",
+    )
+    axis.text(
+        0.03,
+        0.62,
+        f"{int(summary_m2['columba_recovered_baseline_valid_loci']):,}/"
+        f"{int(summary_m2['baseline_valid_loci']):,} recovered\n"
+        f"{int(summary_m2['baseline_missing_loci']):,} missing; "
+        f"{int(summary_m2['columba_invalid_loci']):,} invalid\n"
+        f"m=1: {int(summary_m1['columba_recovered_baseline_valid_loci']):,}/"
+        f"{int(summary_m1['baseline_valid_loci']):,} recovered",
+        transform=axis.transAxes,
+        ha="left",
+        va="top",
+        fontsize=8.0 if standalone else 6.1,
+        color=DARK_TEXT,
     )
 
 
@@ -495,7 +611,11 @@ def save_figure(figure, pdf_path: Path, png_path: Path, subject: str) -> None:
     plt.close(figure)
 
 
-def render_combined(rows: list[dict[str, str]], counts: dict[str, int]) -> None:
+def render_combined(
+    rows: list[dict[str, str]],
+    counts: dict[str, int],
+    mismatch_rows: list[dict[str, str]],
+) -> None:
     apply_style(standalone=False)
     figure, axes = plt.subplots(2, 2, figsize=(8.3, 6.2))
     figure.subplots_adjust(
@@ -512,7 +632,7 @@ def render_combined(rows: list[dict[str, str]], counts: dict[str, int]) -> None:
 
     panel_a(axis_a, rows)
     panel_b(axis_b, rows)
-    panel_c(axis_c, rows)
+    panel_c(axis_c, mismatch_rows)
     panel_d(axis_d, rows, counts)
 
     for label, axis in zip(("A", "B", "C", "D"), axes.flat, strict=True):
@@ -538,6 +658,7 @@ def render_combined(rows: list[dict[str, str]], counts: dict[str, int]) -> None:
 def render_standalone(
     rows: list[dict[str, str]],
     counts: dict[str, int],
+    mismatch_rows: list[dict[str, str]],
     panel_name: str,
     render_panel,
     figsize: tuple[float, float],
@@ -550,6 +671,8 @@ def render_standalone(
         configure_axis(axis)
     if panel_name == "panelD_post_output_classification":
         render_panel(axis, rows, counts, standalone=True)
+    elif panel_name == "panelC_mismatch_validation":
+        render_panel(axis, mismatch_rows, standalone=True)
     else:
         render_panel(axis, rows, standalone=True)
     pdf_path = PANEL_DIR / f"{panel_name}.pdf"
@@ -558,9 +681,13 @@ def render_standalone(
     return pdf_path, png_path
 
 
-def render_all(rows: list[dict[str, str]], counts: dict[str, int]) -> list[Path]:
+def render_all(
+    rows: list[dict[str, str]],
+    counts: dict[str, int],
+    mismatch_rows: list[dict[str, str]],
+) -> list[Path]:
     PANEL_DIR.mkdir(parents=True, exist_ok=True)
-    render_combined(rows, counts)
+    render_combined(rows, counts, mismatch_rows)
     outputs = [PDF_PATH, PNG_PATH]
     standalone_specs = [
         (
@@ -576,7 +703,7 @@ def render_all(rows: list[dict[str, str]], counts: dict[str, int]) -> list[Path]
             {"left": 0.12, "right": 0.98, "bottom": 0.18, "top": 0.90},
         ),
         (
-            "panelC_edit_distance",
+            "panelC_mismatch_validation",
             panel_c,
             (6.2, 4.3),
             {"left": 0.13, "right": 0.98, "bottom": 0.14, "top": 0.86},
@@ -589,14 +716,16 @@ def render_all(rows: list[dict[str, str]], counts: dict[str, int]) -> list[Path]
         ),
     ]
     for spec in standalone_specs:
-        outputs.extend(render_standalone(rows, counts, *spec))
+        outputs.extend(render_standalone(rows, counts, mismatch_rows, *spec))
     return outputs
 
 
 def main() -> None:
     rows = read_tsv(SOURCE_DATA_PATH)
+    mismatch_rows = read_tsv(MISMATCH_SOURCE_DATA_PATH)
     counts = validate_source(rows)
-    outputs = render_all(rows, counts)
+    validate_mismatch_source(mismatch_rows)
+    outputs = render_all(rows, counts, mismatch_rows)
     for path in outputs:
         if not path.is_file() or path.stat().st_size == 0:
             raise RuntimeError(f"Missing or empty output: {path}")
